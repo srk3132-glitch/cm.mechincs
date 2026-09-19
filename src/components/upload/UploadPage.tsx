@@ -9,7 +9,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { DatasetError, parseAnyFile, SAMPLE_CSV, unitFor, type Dataset, type SignalGroup } from "../../lib/parsers/dataset";
+import { DatasetError, parseAnyFile, parseDelimited, SAMPLE_CSV, unitFor, type Dataset, type SignalGroup } from "../../lib/parsers/dataset";
 import { fmt, fmtInt } from "../../lib/format";
 import { Badge, Button, Card, CardHeader, SectionHeading, Segmented, Select } from "../ui";
 import { DatasetCharts, DatasetEnergyDonut, DatasetHistogram } from "./DatasetCharts";
@@ -63,7 +63,7 @@ export function UploadPage() {
 
   const loadSample = () => {
     try {
-      const ds = parseCsvSample(SAMPLE_CSV);
+      const ds = parseDelimited(SAMPLE_CSV, "sample_collision_run");
       setError(null);
       setDataset(ds);
       setXColumn(ds.xColumn);
@@ -364,47 +364,4 @@ export function UploadPage() {
       )}
     </div>
   );
-}
-
-/** Builds the built-in sample dataset through the same parser path. */
-function parseCsvSample(text: string): Dataset {
-  // lazy require-free: reuse the CSV parser without re-importing the module top-level
-  const lines = text.trim().split("\n");
-  const header = lines[0].split(",");
-  const rows = lines.slice(1).map((l) => {
-    const cells = l.split(",");
-    const row: Record<string, number> = {};
-    header.forEach((h, i) => (row[h] = parseFloat(cells[i])));
-    return row;
-  });
-  const groups: Record<SignalGroup, string[]> = { time: [], velocity: [], momentum: [], energy: [], force: [], position: [], other: [] };
-  for (const h of header) {
-    const g = /time/i.test(h)
-      ? "time"
-      : /velocity/i.test(h)
-        ? "velocity"
-        : /momentum/i.test(h)
-          ? "momentum"
-          : /energy/i.test(h)
-            ? "energy"
-            : /force/i.test(h)
-              ? "force"
-              : "other";
-    groups[g].push(h);
-  }
-  return {
-    name: "sample_collision_run",
-    source: "built-in sample (CSV)",
-    columns: header,
-    numericColumns: header,
-    rows,
-    groups,
-    xColumn: "time",
-    xUnit: "s",
-    notes: ["Impact between a 1.6 kg drone and a 2.2 kg drone, e = 0.6"],
-    stats: header.map((c) => {
-      const vals = rows.map((r) => r[c]).filter(Number.isFinite);
-      return { column: c, min: Math.min(...vals), max: Math.max(...vals), mean: vals.reduce((a, b) => a + b, 0) / vals.length, unit: unitFor(c) };
-    }),
-  };
 }

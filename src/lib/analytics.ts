@@ -33,7 +33,7 @@ export function rangeForPreset(preset: RangePreset, minDate: string, current: Fi
 
 export function defaultFilters(minDate: string): Filters {
   const base: Filters = {
-    preset: "1d",
+    preset: "30d",
     from: minDate,
     to: toISODate(new Date()),
     type: "All",
@@ -41,7 +41,7 @@ export function defaultFilters(minDate: string): Filters {
     arena: "All",
     status: "All",
   };
-  return { ...base, ...rangeForPreset("1d", minDate, base) };
+  return { ...base, ...rangeForPreset("30d", minDate, base) };
 }
 
 export function previousRange(from: string, to: string) {

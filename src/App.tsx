@@ -4,6 +4,7 @@ import { useHashRoute } from "./hooks/useHashRoute";
 import { generateRecords, type CollisionRecord } from "./data/generateData";
 import {
   applyDateRange,
+  applyFilters,
   applySegmentFilters,
   computeKpis,
   defaultFilters,
@@ -102,7 +103,7 @@ function TestLogPage({
   filters: Filters;
   onLoad: (r: CollisionRecord) => void;
 }) {
-  const current = useMemo(() => applyFiltersFor(filters, records), [filters, records]);
+  const current = useMemo(() => applyFilters(records, filters), [records, filters]);
   return (
     <div className="space-y-6 pt-8">
       <SectionHeading
@@ -114,9 +115,6 @@ function TestLogPage({
     </div>
   );
 }
-
-const applyFiltersFor = (filters: Filters, records: CollisionRecord[]) =>
-  applyDateRange(applySegmentFilters(records, filters), filters.from, filters.to);
 
 function Dashboard() {
   const records = useMemo(() => generateRecords(), []);

@@ -469,7 +469,7 @@ export function ForceTrend({ points, granularity }: { points: TimePoint[]; granu
                 </linearGradient>
               </defs>
               <CartesianGrid stroke={th.grid} vertical={false} />
-              <XAxis dataKey="date" tickFormatter={(v: string) => fmtDate(v)} tick={th.tickStyle} axisLine={{ stroke: th.axisLine }} tickLine={false} minTickGap={28} />
+              <XAxis dataKey="key" tickFormatter={(v: string) => bucketLabel(v, granularity)} tick={th.tickStyle} axisLine={{ stroke: th.axisLine }} tickLine={false} minTickGap={28} />
               <YAxis tick={th.tickStyle} axisLine={false} tickLine={false} width={44} tickFormatter={(v: number) => fmtCompact(v)} />
               <Tooltip
                 cursor={{ stroke: th.cursor, strokeDasharray: "4 4" }}
@@ -574,7 +574,7 @@ export function VelocityChart({ points, granularity }: { points: TimePoint[]; gr
             <LineChart data={points} margin={{ top: 10, right: 46, bottom: 0, left: 0 }}>
               <CartesianGrid stroke={th.grid} vertical={false} />
               <XAxis dataKey="key" tick={th.tickStyle} axisLine={{ stroke: th.axisLine }} tickLine={false} interval={tickGap} minTickGap={22} />
-              <YAxis tick={th.tickStyle} axisLine={false} tickLine={false} width={44} tickFormatter={(v: number) => fmt(v, 0)} unit=" m/s" />
+              <YAxis yAxisId="v" tick={th.tickStyle} axisLine={false} tickLine={false} width={44} tickFormatter={(v: number) => fmt(v, 0)} unit=" m/s" />
               {mode === "restitution" && (
                 <YAxis
                   yAxisId="e"
@@ -614,6 +614,7 @@ export function VelocityChart({ points, granularity }: { points: TimePoint[]; gr
               {series.map((s) => (
                 <Line
                   key={s.key}
+                  yAxisId="v"
                   type="monotone"
                   dataKey={s.key}
                   name={s.name}
