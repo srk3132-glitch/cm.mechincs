@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+.bun/
+
+# Build artifacts
+dist/
+dist.zip
+
+# Environment & logs
+*.log
+.env
+.env.local
+
+# Editor directories
+.vscode/
+.idea/
