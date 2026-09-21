@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import { useTheme } from "../../hooks/useTheme";
 
 export const PALETTE = {
-  blue: "#337dff",
-  violet: "#8b5cf6",
-  emerald: "#10b981",
-  amber: "#f59e0b",
-  rose: "#f43f5e",
-  cyan: "#06b6d4",
+  blue: "#3b82f6",     // Electric blue for velocity & approach
+  violet: "#8b5cf6",   // System momentum & total energy
+  emerald: "#10b981",  // Elastic collision & nominal state
+  amber: "#f59e0b",    // Kinetic energy & impact loads
+  rose: "#ef4444",     // Soft red for collision / impact events & anomalies
+  cyan: "#06b6d4",     // Closing velocity & spin dynamics
   slate: "#64748b",
   pink: "#ec4899",
   lime: "#84cc16",
@@ -27,20 +27,20 @@ export const STATUS_COLORS: Record<string, string> = {
 
 export const DRONE_COLORS = [PALETTE.amber, PALETTE.cyan, PALETTE.blue, PALETTE.violet, PALETTE.rose];
 
-export const ANIM = { animationDuration: 700, animationEasing: "ease-out" as const };
+export const ANIM = { animationDuration: 750, animationEasing: "ease-out" as const };
 
 export function useChartTheme() {
   const { dark } = useTheme();
   return {
     dark,
-    grid: dark ? "rgba(148,163,184,0.12)" : "rgba(100,116,139,0.14)",
+    grid: dark ? "rgba(148,163,184,0.08)" : "rgba(100,116,139,0.12)",
     axis: dark ? "#94a3b8" : "#64748b",
-    axisLine: dark ? "rgba(148,163,184,0.25)" : "rgba(100,116,139,0.25)",
-    text: dark ? "#e2e8f0" : "#0f172a",
+    axisLine: dark ? "rgba(148,163,184,0.18)" : "rgba(100,116,139,0.22)",
+    text: dark ? "#f1f5f9" : "#0f172a",
     muted: dark ? "#94a3b8" : "#64748b",
-    cursor: dark ? "rgba(148,163,184,0.25)" : "rgba(100,116,139,0.3)",
+    cursor: dark ? "rgba(59,130,246,0.3)" : "rgba(59,130,246,0.25)",
     reference: dark ? "#f8fafc" : "#0f172a",
-    tickStyle: { fontSize: 11, fill: dark ? "#94a3b8" : "#64748b" },
+    tickStyle: { fontSize: 11, fill: dark ? "#94a3b8" : "#64748b", fontFamily: "JetBrains Mono, monospace" },
   };
 }
 
@@ -71,23 +71,26 @@ export function ChartTooltip({ active, payload, label, labelFormatter, valueForm
   const items = payload.filter((p) => p.value !== undefined && p.value !== null);
   if (!items.length) return null;
   return (
-    <div className="min-w-[160px] rounded-xl border border-slate-200/80 bg-white/95 px-3 py-2.5 text-xs shadow-xl shadow-slate-900/10 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 dark:shadow-black/40">
+    <div className="min-w-[170px] rounded-xl border border-slate-200/90 bg-white/95 px-3.5 py-2.5 text-xs shadow-xl shadow-slate-900/10 backdrop-blur-md dark:border-blue-500/25 dark:bg-[#0c1220]/95 dark:shadow-[0_16px_36px_rgba(0,0,0,0.65)]">
       {!hideLabel && (
-        <p className="mb-1.5 font-semibold text-slate-700 dark:text-slate-200">
-          {labelFormatter ? labelFormatter(label, items) : label}
-        </p>
+        <div className="mb-2 flex items-center justify-between border-b border-slate-100 pb-1.5 dark:border-slate-800">
+          <p className="font-mono text-[11px] font-semibold tracking-wide text-slate-700 dark:text-slate-200">
+            {labelFormatter ? labelFormatter(label, items) : label}
+          </p>
+          <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
+        </div>
       )}
-      <ul className="space-y-1">
+      <ul className="space-y-1.5">
         {items.map((it, i) => {
           const numeric = typeof it.value === "number" ? it.value : Number(it.value);
           const name = String(it.name ?? it.dataKey ?? "");
           return (
             <li key={i} className="flex items-center justify-between gap-4">
               <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: it.color }} />
+                <span className="inline-block h-2 w-2 rounded-full ring-1 ring-white/20" style={{ backgroundColor: it.color }} />
                 {name}
               </span>
-              <span className="font-mono font-medium tabular-nums text-slate-900 dark:text-slate-100">
+              <span className="font-mono font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                 {valueFormatter
                   ? valueFormatter(numeric, name, it)
                   : Number.isFinite(numeric)
@@ -99,7 +102,11 @@ export function ChartTooltip({ active, payload, label, labelFormatter, valueForm
           );
         })}
       </ul>
-      {footer && <div className="mt-2 border-t border-slate-200/70 pt-1.5 text-slate-500 dark:border-slate-700 dark:text-slate-400">{footer(items)}</div>}
+      {footer && (
+        <div className="mt-2 border-t border-slate-200/70 pt-1.5 text-[11px] text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          {footer(items)}
+        </div>
+      )}
     </div>
   );
 }
@@ -147,13 +154,11 @@ export function LegendRow({ items }: { items: { label: string; color: string; da
   );
 }
 
-/* ---------------- Empty state ---------------- */
-
-export function EmptyChart({ message = "No data for the selected filters" }: { message?: string }) {
+export function EmptyChart({ message = "No data points in this range" }: { message?: string }) {
   return (
-    <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 text-center">
-      <div className="h-10 w-10 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-700" />
-      <p className="text-xs text-slate-500 dark:text-slate-400">{message}</p>
+    <div className="flex h-full min-h-[160px] flex-col items-center justify-center gap-2 p-6 text-center text-xs text-slate-400 dark:text-slate-500">
+      <div className="h-8 w-8 rounded-full border border-dashed border-slate-300 dark:border-slate-700" />
+      <p>{message}</p>
     </div>
   );
 }

@@ -15,7 +15,7 @@ interface Props {
 }
 
 const inputCls =
-  "h-9 rounded-lg border border-slate-200 bg-white px-2.5 font-mono text-xs text-slate-800 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
+  "h-9 rounded-lg border border-slate-200/80 bg-white/90 px-2.5 font-mono text-xs text-slate-800 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700/80 dark:bg-[#0d1424] dark:text-slate-100";
 
 export function FilterBar({ filters, onChange, minDate, maxDate, shown, total, onReset }: Props) {
   const setPreset = (p: RangePreset) => onChange({ ...filters, preset: p, ...rangeForPreset(p, minDate, filters) });
@@ -38,7 +38,7 @@ export function FilterBar({ filters, onChange, minDate, maxDate, shown, total, o
     filters.status === "All";
 
   return (
-    <div className="z-30 -mx-4 border-y border-slate-200/70 bg-white/85 px-4 py-3 backdrop-blur-md transition-colors sm:-mx-6 sm:px-6 lg:sticky lg:top-16 lg:-mx-8 lg:px-8 dark:border-slate-800 dark:bg-slate-950/85">
+    <div className="z-30 -mx-4 border-y border-slate-200/70 bg-white/80 px-4 py-3 backdrop-blur-xl transition-colors sm:-mx-6 sm:px-6 lg:sticky lg:top-16 lg:-mx-8 lg:px-8 dark:border-slate-800/80 dark:bg-[#0a0f1d]/85 dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
       <div className="mx-auto flex max-w-[1600px] flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
         {/* Date range */}
         <div className="flex flex-wrap items-end gap-3">

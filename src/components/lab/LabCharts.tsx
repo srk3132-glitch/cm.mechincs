@@ -108,6 +108,45 @@ export const VelocityChart = memo(function VelocityChart({ sim, t }: TimeChartPr
   );
 });
 
+/* ============ Angular Velocity (Spin) ============ */
+
+export const SpinChart = memo(function SpinChart({ sim, t }: TimeChartProps) {
+  const { th, xAxis } = useTimeAxis(sim);
+  return (
+    <Card className="flex flex-col">
+      <CardHeader
+        title="Angular velocity (spin) vs. time"
+        subtitle="Rotational spin exchange from torque and tangential friction"
+        action={
+          <LegendRow
+            items={[
+              { label: "Spin ω₁ (A)", color: LAB_COLORS.a },
+              { label: "Spin ω₂ (B)", color: LAB_COLORS.b },
+            ]}
+          />
+        }
+      />
+      <div className="px-2 pb-3 pt-2" style={{ height: H }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={sim.points} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
+            <CartesianGrid stroke={th.grid} vertical={false} />
+            {xAxis}
+            <YAxis tick={th.tickStyle} axisLine={false} tickLine={false} width={44} tickFormatter={(v: number) => `${fmt(v, 0)}`} />
+            <Tooltip
+              cursor={{ stroke: th.cursor, strokeDasharray: "4 4" }}
+              content={<ChartTooltip labelFormatter={(l) => `t = ${fmt(Number(l) * 1000, 0)} ms`} valueFormatter={(v) => `${fmt(v, 1)} rad/s`} />}
+            />
+            <ReferenceLine y={0} stroke={th.axisLine} />
+            <ContactBand sim={sim} t={t} />
+            <Line type="monotone" dataKey="w1" name="Spin ω₁ (A)" stroke={LAB_COLORS.a} strokeWidth={2.4} dot={false} {...ANIM} />
+            <Line type="monotone" dataKey="w2" name="Spin ω₂ (B)" stroke={LAB_COLORS.b} strokeWidth={2.4} dot={false} {...ANIM} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </Card>
+  );
+});
+
 /* ============ Momentum ============ */
 
 export const MomentumChart = memo(function MomentumChart({ sim, t }: TimeChartProps) {
@@ -157,13 +196,13 @@ export const EnergyChart = memo(function EnergyChart({ sim, t }: TimeChartProps)
     <Card className="flex flex-col">
       <CardHeader
         title="Kinetic energy vs. time"
-        subtitle="Energy dips into deformation during contact; the gap that remains is dissipated"
+        subtitle="Linear and rotational energy convert and dissipate during impact"
         action={
           <LegendRow
             items={[
-              { label: "KE A", color: LAB_COLORS.a },
-              { label: "KE B", color: LAB_COLORS.b },
-              { label: "KE total", color: LAB_COLORS.ke },
+              { label: "Trans KE", color: LAB_COLORS.ke },
+              { label: "Spin KE", color: LAB_COLORS.rot },
+              { label: "Total E", color: LAB_COLORS.total },
               { label: "Stored / lost", color: LAB_COLORS.lost },
             ]}
           />
@@ -187,9 +226,9 @@ export const EnergyChart = memo(function EnergyChart({ sim, t }: TimeChartProps)
             />
             <ContactBand sim={sim} t={t} />
             <Area type="monotone" dataKey="eStored" name="Stored / dissipated" stroke={LAB_COLORS.lost} strokeWidth={1.5} fill="url(#lostFill)" {...ANIM} />
-            <Line type="monotone" dataKey="ke" name="KE total" stroke={LAB_COLORS.ke} strokeWidth={3} dot={false} {...ANIM} />
-            <Line type="monotone" dataKey="ke1" name="KE A" stroke={LAB_COLORS.a} strokeWidth={2} dot={false} {...ANIM} />
-            <Line type="monotone" dataKey="ke2" name="KE B" stroke={LAB_COLORS.b} strokeWidth={2} dot={false} {...ANIM} />
+            <Line type="monotone" dataKey="totalEnergy" name="Total E" stroke={LAB_COLORS.total} strokeWidth={2.6} dot={false} {...ANIM} />
+            <Line type="monotone" dataKey="ke" name="Trans KE" stroke={LAB_COLORS.ke} strokeWidth={2} dot={false} {...ANIM} />
+            <Line type="monotone" dataKey="keRot" name="Spin KE" stroke={LAB_COLORS.rot} strokeWidth={1.8} strokeDasharray="4 3" dot={false} {...ANIM} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

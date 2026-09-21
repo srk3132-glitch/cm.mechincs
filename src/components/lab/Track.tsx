@@ -9,29 +9,125 @@ export const LAB_COLORS = {
   lost: "#f43f5e",
   com: "#64748b",
   ke: "#10b981",
+  rot: "#06b6d4",
 };
 
-function DroneGlyph({ cx, cy, r, color, label, flip }: { cx: number; cy: number; r: number; color: string; label: string; flip?: boolean }) {
+function DroneGlyph({
+  cx,
+  cy,
+  r,
+  color,
+  label,
+  flip,
+  theta = 0,
+  omega = 0,
+}: {
+  cx: number;
+  cy: number;
+  r: number;
+  color: string;
+  label: string;
+  flip?: boolean;
+  theta?: number;
+  omega?: number;
+}) {
   const armY = cy - r * 0.55;
+  // rotor visual spin angle derived from rotation state
+  const rotorAngle = ((theta * 180) / Math.PI * 4) % 360;
+  const bodyAngleDeg = Math.max(-25, Math.min(25, ((theta * 180) / Math.PI) % 360 * 0.15));
+
   return (
     <g transform={`translate(${cx} ${cy})${flip ? " scale(-1 1)" : ""}`} style={{ transition: "none" }}>
       {/* shadow */}
       <ellipse cx={0} cy={r * 1.05} rx={r * 0.9} ry={r * 0.16} fill="currentColor" opacity={0.12} />
-      {/* arms */}
-      <line x1={-r * 0.85} y1={armY - cy} x2={r * 0.85} y2={armY - cy} stroke={color} strokeWidth={Math.max(2, r * 0.12)} strokeLinecap="round" />
-      {/* rotors */}
-      <ellipse cx={-r * 0.8} cy={armY - cy - r * 0.18} rx={r * 0.42} ry={r * 0.09} fill={color} opacity={0.55} />
-      <ellipse cx={r * 0.8} cy={armY - cy - r * 0.18} rx={r * 0.42} ry={r * 0.09} fill={color} opacity={0.55} />
-      <line x1={-r * 0.8} y1={armY - cy} x2={-r * 0.8} y2={armY - cy - r * 0.18} stroke={color} strokeWidth={2} />
-      <line x1={r * 0.8} y1={armY - cy} x2={r * 0.8} y2={armY - cy - r * 0.18} stroke={color} strokeWidth={2} />
-      {/* body */}
-      <rect x={-r} y={-r * 0.45} width={r * 2} height={r * 0.95} rx={r * 0.35} fill={color} />
-      <rect x={-r * 0.55} y={-r * 0.62} width={r * 1.1} height={r * 0.4} rx={r * 0.2} fill={color} opacity={0.85} />
-      {/* bumper */}
-      <rect x={-r} y={-r * 0.45} width={r * 2} height={r * 0.95} rx={r * 0.35} fill="none" stroke="#fff" strokeOpacity={0.35} strokeWidth={1.5} />
-      <text x={0} y={r * 0.2} textAnchor="middle" fontSize={Math.max(10, r * 0.55)} fontWeight={700} fill="#fff" transform={flip ? "scale(-1 1)" : undefined}>
-        {label}
-      </text>
+
+      {/* Tilted body group if spinning */}
+      <g transform={`rotate(${flip ? -bodyAngleDeg : bodyAngleDeg})`}>
+        {/* arms */}
+        <line
+          x1={-r * 0.85}
+          y1={armY - cy}
+          x2={r * 0.85}
+          y2={armY - cy}
+          stroke={color}
+          strokeWidth={Math.max(2, r * 0.12)}
+          strokeLinecap="round"
+        />
+
+        {/* spinning rotor left */}
+        <g transform={`translate(${-r * 0.8} ${armY - cy - r * 0.18})`}>
+          <ellipse
+            cx={0}
+            cy={0}
+            rx={r * 0.42 * Math.abs(Math.cos((rotorAngle * Math.PI) / 180)) + r * 0.12}
+            ry={r * 0.09}
+            fill={color}
+            opacity={0.65}
+          />
+          <line x1={0} y1={0} x2={0} y2={r * 0.18} stroke={color} strokeWidth={2} />
+        </g>
+
+        {/* spinning rotor right */}
+        <g transform={`translate(${r * 0.8} ${armY - cy - r * 0.18})`}>
+          <ellipse
+            cx={0}
+            cy={0}
+            rx={r * 0.42 * Math.abs(Math.sin((rotorAngle * Math.PI) / 180)) + r * 0.12}
+            ry={r * 0.09}
+            fill={color}
+            opacity={0.65}
+          />
+          <line x1={0} y1={0} x2={0} y2={r * 0.18} stroke={color} strokeWidth={2} />
+        </g>
+
+        {/* body */}
+        <rect x={-r} y={-r * 0.45} width={r * 2} height={r * 0.95} rx={r * 0.35} fill={color} />
+        <rect x={-r * 0.55} y={-r * 0.62} width={r * 1.1} height={r * 0.4} rx={r * 0.2} fill={color} opacity={0.85} />
+
+        {/* bumper edge highlight */}
+        <rect
+          x={-r}
+          y={-r * 0.45}
+          width={r * 2}
+          height={r * 0.95}
+          rx={r * 0.35}
+          fill="none"
+          stroke="#fff"
+          strokeOpacity={0.4}
+          strokeWidth={1.5}
+        />
+
+        {/* Spin direction indicator arc if rotating significantly */}
+        {Math.abs(omega) > 1 && (
+          <g transform={`scale(${omega >= 0 ? 1 : -1} 1)`}>
+            <path
+              d={`M ${-r * 0.45} ${r * 0.25} A ${r * 0.45} ${r * 0.45} 0 0 1 ${r * 0.45} ${r * 0.25}`}
+              fill="none"
+              stroke="#fff"
+              strokeWidth={1.4}
+              strokeDasharray="3 2"
+              opacity={0.7}
+            />
+            <polygon
+              points={`${r * 0.45},${r * 0.25 - 2} ${r * 0.45 + 3},${r * 0.25 + 3} ${r * 0.45 - 3},${r * 0.25 + 3}`}
+              fill="#fff"
+              opacity={0.8}
+            />
+          </g>
+        )}
+
+        <text
+          x={0}
+          y={r * 0.12}
+          textAnchor="middle"
+          fontSize={Math.max(10, r * 0.5)}
+          fontWeight={700}
+          fill="#fff"
+          transform={flip ? "scale(-1 1)" : undefined}
+        >
+          {label}
+        </text>
+      </g>
     </g>
   );
 }
@@ -40,19 +136,29 @@ export function Track({ sim, t }: { sim: Simulation; t: number }) {
   const th = useChartTheme();
   const p = sim.sample(t);
   const W = 800;
-  const H = 190;
+  const H = 200;
   const pad = 48;
   const span = Math.max(sim.xMax - sim.xMin, 0.5);
   const scale = (W - 2 * pad) / span;
   const sx = (x: number) => pad + (x - sim.xMin) * scale;
-  const groundY = 132;
-  const rA = Math.max(16, Math.min(40, sim.r1 * scale));
-  const rB = Math.max(16, Math.min(40, sim.r2 * scale));
-  const bodyY = groundY - Math.max(rA, rB) * 0.7;
+  const groundY = 138;
+
+  // Scaled radii visually in pixels, reflecting input r1 and r2
+  const rA = Math.max(16, Math.min(54, sim.r1 * scale));
+  const rB = Math.max(16, Math.min(54, sim.r2 * scale));
+  const maxR = Math.max(rA, rB);
+  const bodyY = groundY - maxR * 0.72;
+
+  // Optional visual offset for off-center impacts
+  const offsetPixels = (sim.input.impactOffset ?? 0) * scale * 0.7;
+  const bodyYA = bodyY;
+  const bodyYB = bodyY - offsetPixels;
+
   const vScale = 70 / Math.max(sim.vMax, 0.1);
   const contactX = sx(0);
   const fRatio = sim.result.peakForce > 0 ? p.f / sim.result.peakForce : 0;
-  // anchor each glyph to its true contact surface so they touch exactly at impact
+
+  // Anchor each glyph to its true physical contact surface
   const cxA = sx(p.x1 + sim.r1) - rA;
   const cxB = sx(p.x2 - sim.r2) + rB;
 
@@ -78,8 +184,8 @@ export function Track({ sim, t }: { sim: Simulation; t: number }) {
     <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full select-none text-slate-900 dark:text-slate-100" role="img" aria-label="Drone collision track">
       <defs>
         <radialGradient id="flash" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#fff" stopOpacity={0.9} />
-          <stop offset="35%" stopColor={LAB_COLORS.lost} stopOpacity={0.7} />
+          <stop offset="0%" stopColor="#fff" stopOpacity={0.95} />
+          <stop offset="35%" stopColor={LAB_COLORS.lost} stopOpacity={0.75} />
           <stop offset="100%" stopColor={LAB_COLORS.lost} stopOpacity={0} />
         </radialGradient>
       </defs>
@@ -96,35 +202,43 @@ export function Track({ sim, t }: { sim: Simulation; t: number }) {
       ))}
 
       {/* contact plane */}
-      <line x1={contactX} y1={26} x2={contactX} y2={groundY} stroke={LAB_COLORS.lost} strokeDasharray="3 4" strokeOpacity={0.5} />
-      <text x={contactX} y={18} textAnchor="middle" fontSize={10} fill={LAB_COLORS.lost} opacity={0.8}>
-        impact plane
+      <line x1={contactX} y1={22} x2={contactX} y2={groundY} stroke={LAB_COLORS.lost} strokeDasharray="3 4" strokeOpacity={0.5} />
+      <text x={contactX} y={16} textAnchor="middle" fontSize={10} fill={LAB_COLORS.lost} opacity={0.85}>
+        impact plane (x = 0)
       </text>
 
       {/* impact flash */}
       {p.phase === "contact" && fRatio > 0.02 && (
-        <circle cx={contactX} cy={bodyY} r={14 + 46 * fRatio} fill="url(#flash)" opacity={0.5 + 0.5 * fRatio} />
+        <circle cx={contactX} cy={(bodyYA + bodyYB) / 2} r={14 + 48 * fRatio} fill="url(#flash)" opacity={0.5 + 0.5 * fRatio} />
       )}
 
       {/* velocity arrows */}
-      <Arrow x={cxA} v={p.v1} color={LAB_COLORS.a} y={bodyY - rA * 1.05 - 10} />
-      <Arrow x={cxB} v={p.v2} color={LAB_COLORS.b} y={bodyY - rB * 1.05 - 10} />
+      <Arrow x={cxA} v={p.v1} color={LAB_COLORS.a} y={bodyYA - rA * 1.05 - 10} />
+      <Arrow x={cxB} v={p.v2} color={LAB_COLORS.b} y={bodyYB - rB * 1.05 - 10} />
 
-      {/* drones */}
-      <DroneGlyph cx={cxA} cy={bodyY} r={rA} color={LAB_COLORS.a} label="A" />
-      <DroneGlyph cx={cxB} cy={bodyY} r={rB} color={LAB_COLORS.b} label="B" flip />
+      {/* drones with dynamic radius & animated rotation */}
+      <DroneGlyph cx={cxA} cy={bodyYA} r={rA} color={LAB_COLORS.a} label="A" theta={p.theta1} omega={p.w1} />
+      <DroneGlyph cx={cxB} cy={bodyYB} r={rB} color={LAB_COLORS.b} label="B" flip theta={p.theta2} omega={p.w2} />
 
-      {/* readouts */}
+      {/* telemetry readouts */}
       <g fontFamily="ui-monospace, monospace" fontSize={11}>
         <text x={pad - 20} y={H - 12} fill={LAB_COLORS.a} fontWeight={600}>
-          A · v {fmt(p.v1, 2)} m/s · p {fmt(p.p1, 2)} kg·m/s
+          A · v {fmt(p.v1, 2)} m/s · p {fmt(p.p1, 2)} kg·m/s · ω {fmt(p.w1, 1)} rad/s · r {fmt(sim.r1, 2)}m
         </text>
         <text x={W - pad + 20} y={H - 12} textAnchor="end" fill={LAB_COLORS.b} fontWeight={600}>
-          B · v {fmt(p.v2, 2)} m/s · p {fmt(p.p2, 2)} kg·m/s
+          B · v {fmt(p.v2, 2)} m/s · p {fmt(p.p2, 2)} kg·m/s · ω {fmt(p.w2, 1)} rad/s · r {fmt(sim.r2, 2)}m
         </text>
       </g>
       {p.phase === "contact" && (
-        <text x={contactX} y={bodyY - Math.max(rA, rB) * 1.05 - 34} textAnchor="middle" fontSize={11} fontWeight={700} fill={LAB_COLORS.lost} fontFamily="ui-monospace, monospace">
+        <text
+          x={contactX}
+          y={Math.min(bodyYA - rA * 1.05, bodyYB - rB * 1.05) - 34}
+          textAnchor="middle"
+          fontSize={11}
+          fontWeight={700}
+          fill={LAB_COLORS.lost}
+          fontFamily="ui-monospace, monospace"
+        >
           F = {fmt(p.f, 0)} N
         </text>
       )}

@@ -12,6 +12,7 @@ import {
   LineChart,
   Pie,
   PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Scatter,
   ScatterChart,
@@ -33,7 +34,18 @@ import {
 } from "../../lib/analytics";
 import { fmt, fmtCompact, fmtDate, fmtInt } from "../../lib/format";
 import { Card, CardHeader, Segmented } from "../ui";
-import { ANIM, ChartLegend, ChartTooltip, DRONE_COLORS, EmptyChart, PALETTE, STATUS_COLORS, TYPE_COLORS, useChartTheme, type TooltipItem } from "./common";
+import {
+  ANIM,
+  ChartLegend,
+  ChartTooltip,
+  DRONE_COLORS,
+  EmptyChart,
+  PALETTE,
+  STATUS_COLORS,
+  TYPE_COLORS,
+  useChartTheme,
+  type TooltipItem,
+} from "./common";
 
 const CHART_H = 280;
 
@@ -47,7 +59,7 @@ export function bucketLabel(key: string, granularity: Granularity) {
   }
 }
 
-/* ============ Momentum & Energy trend (line) ============ */
+/* ============ Momentum & Energy trend (gradient area) ============ */
 
 type TrendMetric = "momentum" | "energy" | "velocity";
 
@@ -67,20 +79,28 @@ export function MomentumEnergyTrend({ points, granularity }: { points: TimePoint
       : metric === "energy"
         ? [
             { key: "keBefore", name: "KE before impact", color: PALETTE.blue, unit: "J" },
-            { key: "keAfter", name: "KE after impact", color: PALETTE.emerald, unit: "J" },
+            { key: "keAfter", name: "KE after impact", color: PALETTE.amber, unit: "J" },
           ]
         : [
-            { key: "closing", name: "Closing velocity", color: PALETTE.cyan, unit: "m/s" },
+            { key: "closing", name: "Closing velocity", color: PALETTE.blue, unit: "m/s" },
             { key: "separation", name: "Separation velocity", color: PALETTE.amber, unit: "m/s" },
           ];
 
   const dualAxis = metric === "momentum";
 
+  // Calculate baseline average for the primary series
+  const avgBaseline = useMemo(() => {
+    const valid = points
+      .map((p) => p[series[0].key] as number)
+      .filter((v) => typeof v === "number" && Number.isFinite(v));
+    return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
+  }, [points, series]);
+
   return (
     <Card className="flex flex-col animate-fade-up">
       <CardHeader
         title="Momentum & energy over time"
-        subtitle={`${xLabel} across the filtered test log`}
+        subtitle={`${xLabel} with telemetry baseline`}
         action={
           <Segmented
             value={metric}
@@ -98,7 +118,19 @@ export function MomentumEnergyTrend({ points, granularity }: { points: TimePoint
           <EmptyChart />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={points} margin={{ top: 10, right: dualAxis ? 6 : 16, bottom: 0, left: 0 }}>
+            <ComposedChart data={points} margin={{ top: 10, right: dualAxis ? 6 : 16, bottom: 0, left: 0 }}>
+              <defs>
+                <linearGradient id="primaryAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={series[0].color} stopOpacity={0.4} />
+                  <stop offset="90%" stopColor={series[0].color} stopOpacity={0.01} />
+                </linearGradient>
+                {series[1] && (
+                  <linearGradient id="secondaryAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={series[1].color} stopOpacity={0.3} />
+                    <stop offset="90%" stopColor={series[1].color} stopOpacity={0.01} />
+                  </linearGradient>
+                )}
+              </defs>
               <CartesianGrid stroke={th.grid} vertical={false} />
               <XAxis
                 dataKey="key"
@@ -141,24 +173,58 @@ export function MomentumEnergyTrend({ points, granularity }: { points: TimePoint
                 }
               />
               <Legend content={<ChartLegend />} />
-              {series.map((s) => (
+
+              {/* Baseline Reference Line */}
+              {avgBaseline !== null && (
+                <ReferenceLine
+                  yAxisId="left"
+                  y={avgBaseline}
+                  stroke={th.reference}
+                  strokeDasharray="4 4"
+                  strokeOpacity={0.4}
+                  label={{
+                    value: `avg: ${fmt(avgBaseline, 1)}`,
+                    fill: th.muted,
+                    fontSize: 10,
+                    position: "insideTopRight",
+                  }}
+                />
+              )}
+
+              {/* Primary metric gradient area */}
+              <Area
+                yAxisId="left"
+                type="monotone"
+                dataKey={series[0].key}
+                name={series[0].name}
+                unit={series[0].unit}
+                stroke={series[0].color}
+                strokeWidth={2.4}
+                fill="url(#primaryAreaGrad)"
+                connectNulls
+                dot={false}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: th.dark ? "#0f172a" : "#fff" }}
+                {...ANIM}
+              />
+
+              {/* Secondary metric line or area */}
+              {series[1] && (
                 <Line
-                  key={s.key}
-                  yAxisId={dualAxis && s.dashed ? "right" : "left"}
+                  yAxisId={dualAxis ? "right" : "left"}
                   type="monotone"
-                  dataKey={s.key}
-                  name={s.name}
-                  unit={s.unit}
-                  stroke={s.color}
-                  strokeWidth={s.dashed ? 1.5 : 2.2}
-                  strokeDasharray={s.dashed ? "5 4" : undefined}
-                  dot={points.length <= 24 ? { r: 2.5, strokeWidth: 0, fill: s.color } : false}
+                  dataKey={series[1].key}
+                  name={series[1].name}
+                  unit={series[1].unit}
+                  stroke={series[1].color}
+                  strokeWidth={series[1].dashed ? 1.8 : 2.2}
+                  strokeDasharray={series[1].dashed ? "5 4" : undefined}
+                  dot={points.length <= 24 ? { r: 2.5, strokeWidth: 0, fill: series[1].color } : false}
                   activeDot={{ r: 5, strokeWidth: 2, stroke: th.dark ? "#0f172a" : "#fff" }}
                   connectNulls
                   {...ANIM}
                 />
-              ))}
-            </LineChart>
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         )}
       </div>
@@ -184,27 +250,30 @@ export function CollisionsByPeriod({ records, from, to }: { records: CollisionRe
           <EmptyChart />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 10, right: 16, bottom: 0, left: 0 }} barCategoryGap="28%">
+            <BarChart data={data} margin={{ top: 10, right: 16, bottom: 0, left: 0 }} barCategoryGap="24%">
               <CartesianGrid stroke={th.grid} vertical={false} />
-              <XAxis dataKey="label" tick={th.tickStyle} axisLine={{ stroke: th.axisLine }} tickLine={false} minTickGap={16} />
-              <YAxis tick={th.tickStyle} axisLine={false} tickLine={false} width={32} allowDecimals={false} />
+              <XAxis
+                dataKey="key"
+                tickFormatter={(v: string) => bucketLabel(v, granularity)}
+                tick={th.tickStyle}
+                axisLine={{ stroke: th.axisLine }}
+                tickLine={false}
+                minTickGap={24}
+              />
+              <YAxis tick={th.tickStyle} axisLine={false} tickLine={false} width={36} allowDecimals={false} />
               <Tooltip
                 cursor={{ fill: th.cursor, opacity: 0.25 }}
                 content={
                   <ChartTooltip
                     labelFormatter={(l) => bucketLabel(String(l), granularity)}
-                    valueFormatter={(v) => fmtInt(v)}
-                    footer={(items) => {
-                      const total = items.reduce((a, it) => a + Number(it.value ?? 0), 0);
-                      return `Total: ${total}`;
-                    }}
+                    valueFormatter={(v) => `${fmtInt(v)} tests`}
                   />
                 }
               />
               <Legend content={<ChartLegend />} />
-              <Bar dataKey="Elastic" stackId="a" fill={TYPE_COLORS.Elastic} radius={[0, 0, 0, 0]} {...ANIM} />
-              <Bar dataKey="Partially Inelastic" stackId="a" fill={TYPE_COLORS["Partially Inelastic"]} {...ANIM} />
-              <Bar dataKey="Perfectly Inelastic" stackId="a" fill={TYPE_COLORS["Perfectly Inelastic"]} radius={[4, 4, 0, 0]} {...ANIM} />
+              <Bar dataKey="elastic" name="Elastic" stackId="s" fill={PALETTE.emerald} radius={[0, 0, 0, 0]} {...ANIM} />
+              <Bar dataKey="partial" name="Partially Inelastic" stackId="s" fill={PALETTE.blue} {...ANIM} />
+              <Bar dataKey="inelastic" name="Perfectly Inelastic" stackId="s" fill={PALETTE.amber} radius={[4, 4, 0, 0]} {...ANIM} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -213,7 +282,7 @@ export function CollisionsByPeriod({ records, from, to }: { records: CollisionRe
   );
 }
 
-/* ============ Reusable donut ============ */
+/* ============ Donut ============ */
 
 export function Donut({
   title,
@@ -222,82 +291,71 @@ export function Donut({
   colors,
   centerLabel,
   centerValue,
-  valueFormatter,
+  valueFormatter = (v) => `${v}`,
 }: {
   title: string;
-  subtitle?: string;
+  subtitle: string;
   data: { name: string; value: number }[];
   colors: string[];
   centerLabel: string;
   centerValue: string;
-  valueFormatter: (v: number) => string;
+  valueFormatter?: (v: number) => string;
 }) {
-  const th = useChartTheme();
-  const total = data.reduce((a, d) => a + d.value, 0);
-  const [active, setActive] = useState<number | null>(null);
+  const total = data.reduce((a, b) => a + b.value, 0);
   return (
     <Card className="flex flex-col animate-fade-up">
       <CardHeader title={title} subtitle={subtitle} />
-      <div className="relative px-2 pb-3 pt-1" style={{ height: 250 }}>
-        {total <= 0 ? (
+      <div className="relative px-2 pt-2" style={{ height: CHART_H - 10 }}>
+        {!total ? (
           <EmptyChart />
         ) : (
           <>
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Tooltip
-                  content={
-                    <ChartTooltip
-                      hideLabel
-                      valueFormatter={(v) => `${valueFormatter(v)} · ${fmt((v / total) * 100, 1)}%`}
-                    />
-                  }
-                />
+              <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                 <Pie
                   data={data}
                   dataKey="value"
                   nameKey="name"
-                  innerRadius="62%"
-                  outerRadius="84%"
-                  paddingAngle={2}
-                  cornerRadius={4}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={58}
+                  outerRadius={88}
+                  paddingAngle={3}
                   stroke="none"
-                  onMouseEnter={(_, i) => setActive(i)}
-                  onMouseLeave={() => setActive(null)}
                   {...ANIM}
                 >
-                  {data.map((d, i) => (
-                    <Cell
-                      key={d.name}
-                      fill={colors[i % colors.length]}
-                      opacity={active === null || active === i ? 1 : 0.4}
-                      style={{ transition: "opacity 200ms ease" }}
-                    />
+                  {data.map((_, i) => (
+                    <Cell key={i} fill={colors[i % colors.length]} />
                   ))}
                 </Pie>
+                <Tooltip
+                  content={
+                    <ChartTooltip
+                      valueFormatter={(v, name) => `${valueFormatter(v)} (${total ? fmt((v / total) * 100, 1) : 0}%)`}
+                    />
+                  }
+                />
               </PieChart>
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-              <p className="font-mono text-xl font-semibold tabular-nums text-slate-900 dark:text-white">
-                {active !== null && data[active] ? `${fmt((data[active].value / total) * 100, 0)}%` : centerValue}
-              </p>
-              <p className="max-w-[110px] text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                {active !== null && data[active] ? data[active].name : centerLabel}
-              </p>
+              <span className="font-mono text-xl font-bold tabular-nums text-slate-900 dark:text-white">
+                {centerValue}
+              </span>
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                {centerLabel}
+              </span>
             </div>
           </>
         )}
       </div>
-      <ul className="mx-5 mb-4 space-y-1.5 border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
+      <ul className="flex flex-wrap justify-center gap-x-3 gap-y-1 border-t border-slate-100 px-4 py-2.5 text-[11px] text-slate-500 dark:border-slate-800 dark:text-slate-400">
         {data.map((d, i) => (
-          <li key={d.name} className="flex items-center justify-between gap-2" style={{ color: th.muted }}>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colors[i % colors.length] }} />
-              {d.name}
-            </span>
-            <span className="font-mono tabular-nums text-slate-800 dark:text-slate-200">
+          <li key={d.name} className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colors[i % colors.length] }} />
+            <span>{d.name}</span>
+            <span className="font-mono tabular-nums text-slate-700 dark:text-slate-300">
               {valueFormatter(d.value)}
-              <span className="ml-1.5 text-slate-400">{total ? fmt((d.value / total) * 100, 0) : 0}%</span>
+              <span className="ml-1 text-slate-400">{total ? fmt((d.value / total) * 100, 0) : 0}%</span>
             </span>
           </li>
         ))}
@@ -311,7 +369,7 @@ export function TypeDonut({ records }: { records: CollisionRecord[] }) {
   return (
     <Donut
       title="Collision regimes"
-      subtitle="Share of tests by restitution class"
+      subtitle="Share of tests by severity class"
       data={data}
       colors={data.map((d) => TYPE_COLORS[d.name])}
       centerLabel="tests"
@@ -328,7 +386,7 @@ export function EnergyDonut({ records }: { records: CollisionRecord[] }) {
   return (
     <Donut
       title="Post-impact energy budget"
-      subtitle="Where the initial kinetic energy ends up"
+      subtitle="Kinetic energy retained vs. deformation dissipated"
       data={data}
       colors={[PALETTE.blue, PALETTE.violet, PALETTE.rose]}
       centerLabel="KE retained"
@@ -344,7 +402,7 @@ export function StatusDonut({ records }: { records: CollisionRecord[] }) {
   return (
     <Donut
       title="Conservation check status"
-      subtitle="Measured Δp against the expected momentum"
+      subtitle="Measured Δp against expected momentum"
       data={data}
       colors={data.map((d) => STATUS_COLORS[d.name])}
       centerLabel="nominal"
@@ -447,12 +505,18 @@ export function ArenaBars({ records }: { records: CollisionRecord[] }) {
   );
 }
 
-/* ============ Impact force trend (area) ============ */
+/* ============ Impact force trend (gradient area) ============ */
 
 export function ForceTrend({ points, granularity }: { points: TimePoint[]; granularity: Granularity }) {
   const th = useChartTheme();
   const hasData = points.some((d) => d.count > 0);
   const unitLabel = granularity === "hour" ? "hourly" : granularity === "day" ? "daily" : "weekly";
+
+  const avgForce = useMemo(() => {
+    const valid = points.map((p) => p.force).filter((v): v is number => v !== null && Number.isFinite(v));
+    return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
+  }, [points]);
+
   return (
     <Card className="flex flex-col animate-fade-up">
       <CardHeader title="Impact force trend" subtitle={`${unitLabel[0].toUpperCase()}${unitLabel.slice(1)} mean peak contact force`} />
@@ -469,13 +533,40 @@ export function ForceTrend({ points, granularity }: { points: TimePoint[]; granu
                 </linearGradient>
               </defs>
               <CartesianGrid stroke={th.grid} vertical={false} />
-              <XAxis dataKey="key" tickFormatter={(v: string) => bucketLabel(v, granularity)} tick={th.tickStyle} axisLine={{ stroke: th.axisLine }} tickLine={false} minTickGap={28} />
+              <XAxis
+                dataKey="key"
+                tickFormatter={(v: string) => bucketLabel(v, granularity)}
+                tick={th.tickStyle}
+                axisLine={{ stroke: th.axisLine }}
+                tickLine={false}
+                minTickGap={28}
+              />
               <YAxis tick={th.tickStyle} axisLine={false} tickLine={false} width={44} tickFormatter={(v: number) => fmtCompact(v)} />
               <Tooltip
                 cursor={{ stroke: th.cursor, strokeDasharray: "4 4" }}
                 content={<ChartTooltip labelFormatter={(l) => bucketLabel(String(l), granularity)} valueFormatter={(v) => `${fmtInt(v)} N`} />}
               />
-              <Area type="monotone" dataKey="force" name="Peak force" stroke={PALETTE.amber} strokeWidth={2} fill="url(#forceFill)" connectNulls dot={false} activeDot={{ r: 5, strokeWidth: 2, stroke: th.dark ? "#0f172a" : "#fff" }} {...ANIM} />
+              {avgForce !== null && (
+                <ReferenceLine
+                  y={avgForce}
+                  stroke={th.reference}
+                  strokeDasharray="4 4"
+                  strokeOpacity={0.35}
+                  label={{ value: `avg ${fmtInt(avgForce)}N`, fill: th.muted, fontSize: 10, position: "insideTopRight" }}
+                />
+              )}
+              <Area
+                type="monotone"
+                dataKey="force"
+                name="Peak force"
+                stroke={PALETTE.amber}
+                strokeWidth={2.2}
+                fill="url(#forceFill)"
+                connectNulls
+                dot={false}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: th.dark ? "#0f172a" : "#fff" }}
+                {...ANIM}
+              />
             </AreaChart>
           </ResponsiveContainer>
         )}
@@ -484,18 +575,37 @@ export function ForceTrend({ points, granularity }: { points: TimePoint[]; granu
   );
 }
 
-/* ============ Fleet phase space (scatter) ============ */
+/* ============ Fleet phase space (with trailing motion paths) ============ */
 
 export function FleetPhaseSpace({ records }: { records: CollisionRecord[] }) {
   const th = useChartTheme();
+
+  // Group by severity type for color-coding
   const groups = useMemo(() => {
     const g: Record<string, CollisionRecord[]> = {};
     for (const r of records) (g[r.type] ??= []).push(r);
     return Object.entries(g);
   }, [records]);
+
+  // Extract recent trailing motion path (chronological sequence of last 12 tests)
+  const recentTrail = useMemo(() => {
+    return [...records]
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .slice(-14)
+      .map((r, idx) => ({
+        closingSpeed: r.closingSpeed,
+        keLossPct: r.keLossPct,
+        step: idx + 1,
+        id: r.id,
+      }));
+  }, [records]);
+
   return (
     <Card className="flex flex-col animate-fade-up">
-      <CardHeader title="Fleet impact phase space" subtitle="Closing velocity vs. dissipated energy · bubble = system momentum" />
+      <CardHeader
+        title="Fleet impact phase space with motion trajectory"
+        subtitle="Closing velocity vs. dissipated energy · trailing path shows recent test trajectory"
+      />
       <div className="px-2 pb-3 pt-2" style={{ height: CHART_H + 40 }}>
         {!records.length ? (
           <EmptyChart />
@@ -503,9 +613,28 @@ export function FleetPhaseSpace({ records }: { records: CollisionRecord[] }) {
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 10, right: 16, bottom: 4, left: 0 }}>
               <CartesianGrid stroke={th.grid} />
-              <XAxis type="number" dataKey="closingSpeed" name="Closing velocity" unit=" m/s" tick={th.tickStyle} axisLine={{ stroke: th.axisLine }} tickLine={false} label={{ value: "closing velocity (m/s)", position: "insideBottom", offset: -2, fontSize: 10, fill: th.muted }} />
-              <YAxis type="number" dataKey="keLossPct" name="KE dissipated" unit="%" tick={th.tickStyle} axisLine={false} tickLine={false} width={40} domain={[0, 100]} />
-              <ZAxis type="number" dataKey="pBefore" range={[20, 160]} name="Momentum" />
+              <XAxis
+                type="number"
+                dataKey="closingSpeed"
+                name="Closing velocity"
+                unit=" m/s"
+                tick={th.tickStyle}
+                axisLine={{ stroke: th.axisLine }}
+                tickLine={false}
+                label={{ value: "closing velocity (m/s)", position: "insideBottom", offset: -2, fontSize: 10, fill: th.muted }}
+              />
+              <YAxis
+                type="number"
+                dataKey="keLossPct"
+                name="KE dissipated"
+                unit="%"
+                tick={th.tickStyle}
+                axisLine={false}
+                tickLine={false}
+                width={40}
+                domain={[0, 100]}
+              />
+              <ZAxis type="number" dataKey="pBefore" range={[30, 180]} name="Momentum" />
               <Tooltip
                 cursor={{ strokeDasharray: "3 3", stroke: th.cursor }}
                 content={
@@ -514,13 +643,40 @@ export function FleetPhaseSpace({ records }: { records: CollisionRecord[] }) {
                       const p = items[0]?.payload as CollisionRecord | undefined;
                       return p ? `${p.id} · ${p.droneA} → ${p.droneB}` : "";
                     }}
-                    valueFormatter={(v, n) => (n.includes("Momentum") ? `${fmt(v, 2)} kg·m/s` : n.includes("KE") ? `${fmt(v, 1)}%` : `${fmt(v, 2)} m/s`)}
+                    valueFormatter={(v, n) =>
+                      n.includes("Momentum")
+                        ? `${fmt(v, 2)} kg·m/s`
+                        : n.includes("KE")
+                          ? `${fmt(v, 1)}%`
+                          : `${fmt(v, 2)} m/s`
+                    }
                   />
                 }
               />
               <Legend content={<ChartLegend />} />
+
+              {/* Trailing motion path connecting recent consecutive runs */}
+              {recentTrail.length > 1 && (
+                <Scatter
+                  name="Recent trajectory"
+                  data={recentTrail}
+                  line={{ stroke: PALETTE.cyan, strokeWidth: 1.6, strokeDasharray: "4 3" }}
+                  fill={PALETTE.cyan}
+                  shape={() => null}
+                  isAnimationActive={false}
+                />
+              )}
+
+              {/* Scatter clusters grouped by severity */}
               {groups.map(([type, rs]) => (
-                <Scatter key={type} name={type} data={rs} fill={TYPE_COLORS[type]} fillOpacity={0.7} {...ANIM} />
+                <Scatter
+                  key={type}
+                  name={type}
+                  data={rs}
+                  fill={TYPE_COLORS[type]}
+                  fillOpacity={0.75}
+                  {...ANIM}
+                />
               ))}
             </ScatterChart>
           </ResponsiveContainer>
@@ -539,7 +695,7 @@ export function VelocityChart({ points, granularity }: { points: TimePoint[]; gr
   const tickGap = points.length > 30 ? 4 : points.length > 14 ? 2 : 0;
 
   const restitutionSeries = [
-    { key: "closing", name: "Closing velocity", color: PALETTE.cyan, unit: "m/s" },
+    { key: "closing", name: "Closing velocity", color: PALETTE.blue, unit: "m/s" },
     { key: "separation", name: "Separation velocity", color: PALETTE.amber, unit: "m/s" },
   ];
   const perDroneSeries = [
@@ -573,8 +729,23 @@ export function VelocityChart({ points, granularity }: { points: TimePoint[]; gr
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={points} margin={{ top: 10, right: 46, bottom: 0, left: 0 }}>
               <CartesianGrid stroke={th.grid} vertical={false} />
-              <XAxis dataKey="key" tick={th.tickStyle} axisLine={{ stroke: th.axisLine }} tickLine={false} interval={tickGap} minTickGap={22} />
-              <YAxis yAxisId="v" tick={th.tickStyle} axisLine={false} tickLine={false} width={44} tickFormatter={(v: number) => fmt(v, 0)} unit=" m/s" />
+              <XAxis
+                dataKey="key"
+                tick={th.tickStyle}
+                axisLine={{ stroke: th.axisLine }}
+                tickLine={false}
+                interval={tickGap}
+                minTickGap={22}
+              />
+              <YAxis
+                yAxisId="v"
+                tick={th.tickStyle}
+                axisLine={false}
+                tickLine={false}
+                width={44}
+                tickFormatter={(v: number) => fmt(v, 0)}
+                unit=" m/s"
+              />
               {mode === "restitution" && (
                 <YAxis
                   yAxisId="e"
