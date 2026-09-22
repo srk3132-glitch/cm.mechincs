@@ -13,7 +13,7 @@ import {
   type Filters,
 } from "./lib/analytics";
 import type { LabConfig } from "./lib/physics";
-import { dayDiff, fromISODate, toISODate, fmtDateTime } from "./lib/format";
+import { dayDiff, fromISODate, toISODate, fmt, fmtDateTime } from "./lib/format";
 import { Header } from "./components/Header";
 import { FilterBar } from "./components/FilterBar";
 import { KpiGrid } from "./components/KpiGrid";
@@ -40,17 +40,23 @@ import { LoadingSkeleton } from "./components/LoadingSkeleton";
 import {
   BarChart3,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Database,
   Download,
   FileJson,
+  FlaskConical,
+  MoonStar,
+  Pause,
+  Play,
   Radar,
   RefreshCw,
+  RotateCcw,
   Settings2,
   Share2,
   ShieldCheck,
   SunMedium,
-  MoonStar,
+  Upload,
 } from "lucide-react";
 
 const DEFAULT_LAB: LabConfig = {
@@ -173,7 +179,23 @@ function tryShareLink(recordId: string) {
   return url;
 }
 
-function OverviewPage({ records, filters, onLoad }: { records: CollisionRecord[]; filters: Filters; onLoad: (r: CollisionRecord) => void }) {
+function OverviewPage({
+  records,
+  filters,
+  onLoad,
+  isLive,
+  onToggleLive,
+  onResetLive,
+  onLoadSample,
+}: {
+  records: CollisionRecord[];
+  filters: Filters;
+  onLoad: (r: CollisionRecord) => void;
+  isLive?: boolean;
+  onToggleLive?: () => void;
+  onResetLive?: () => void;
+  onLoadSample?: () => void;
+}) {
   const [logExpanded, setLogExpanded] = useState(false);
   const segmented = useMemo(() => applySegmentFilters(records, filters), [records, filters]);
   const current = useMemo(() => applyDateRange(segmented, filters.from, filters.to), [segmented, filters.from, filters.to]);
@@ -183,6 +205,15 @@ function OverviewPage({ records, filters, onLoad }: { records: CollisionRecord[]
   const kpis = useMemo(() => computeKpis(current), [current]);
   const prevKpis = useMemo(() => computeKpis(previous), [previous]);
   const rangeDays = dayDiff(fromISODate(filters.from), fromISODate(filters.to)) + 1;
+  const latest = current[current.length - 1] ?? records[records.length - 1];
+  const statusTone = latest && latest.status === "Anomaly" ? "rose" : latest && latest.status === "Warning" ? "amber" : "emerald";
+  const summaryCards = [
+    { label: "Active tests", value: String(current.length), unit: "runs", accent: "#3b82f6", hint: "Within current date range", title: "Total active runs currently included in the dashboard." },
+    { label: "Latest impact speed", value: latest ? `${fmt(latest.closingSpeed, 2)}` : "--", unit: "m/s", accent: "#22c55e", hint: "Most recent closing velocity", title: "Closing speed is the relative approach speed at initial contact." },
+    { label: "Impact force", value: latest ? `${fmt(latest.peakForce, 0)}` : "--", unit: "N", accent: "#f59e0b", hint: "Peak force observed", title: "Peak force estimates the maximum load transmitted during impact." },
+    { label: "Energy loss", value: latest ? `${fmt(latest.keLossPct, 1)}` : "--", unit: "%", accent: "#ef4444", hint: "Dissipated kinetic energy", title: "Energy loss tracks the percentage of kinetic energy converted to deformation and heat." },
+    { label: "Pass / fail", value: latest ? (latest.status === "Anomaly" ? "Fail" : "Pass") : "--", unit: latest ? (latest.status === "Anomaly" ? "Review" : "Nominal") : "", accent: latest && latest.status === "Anomaly" ? "#ef4444" : "#22c55e", hint: latest ? (latest.status === "Anomaly" ? "Needs review" : "Within tolerance") : "Awaiting telemetry", title: "Pass/fail status shows whether the latest run remains within acceptable tolerance bands." },
+  ];
 
   return (
     <div className="space-y-6 pt-2">
@@ -197,15 +228,90 @@ function OverviewPage({ records, filters, onLoad }: { records: CollisionRecord[]
         }
       />
 
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        {summaryCards.map((card) => (
+          <div key={card.label} title={card.title} className="rounded-2xl border border-slate-200/80 bg-white/80 p-3.5 shadow-sm dark:border-slate-800 dark:bg-[#0c1220]/75">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">{card.label}</span>
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: card.accent }} />
+            </div>
+            <div className="mt-3 flex items-end gap-2">
+              <span className="font-mono text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{card.value}</span>
+              {card.unit && <span className="pb-1 text-[11px] text-slate-500 dark:text-slate-400">{card.unit}</span>}
+            </div>
+            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">{card.hint}</p>
+          </div>
+        ))}
+      </div>
+
+      <Card className="p-4 sm:p-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-600 dark:text-brand-400">Live Test</p>
+            <h3 className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Telemetry control panel</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => onToggleLive?.()} variant={isLive ? "primary" : "secondary"} className="min-h-[44px] px-3">
+              {isLive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />} {isLive ? "Pause" : "Start"}
+            </Button>
+            <Button onClick={onResetLive} variant="outline" className="min-h-[44px] px-3">
+              <RotateCcw className="h-4 w-4" /> Reset
+            </Button>
+            <Button
+              onClick={() => {
+                if (!current.length) return;
+                const rows = current.map((r) => [r.id, new Date(r.timestamp).toISOString(), r.droneA, r.droneB, r.type, r.peakForce, r.keLossPct, r.closingSpeed].join(",")).join("\n");
+                exportFile("live-test-export.csv", `id,timestamp,droneA,droneB,type,peakForce,keLossPct,closingSpeed\n${rows}`, "text/csv;charset=utf-8");
+              }}
+              variant="outline"
+              className="min-h-[44px] px-3"
+            >
+              <Download className="h-4 w-4" /> Export Results
+            </Button>
+          </div>
+        </div>
+      </Card>
+
       <KpiGrid current={kpis} previous={prevKpis} points={points} rangeDays={rangeDays} />
 
       {current.length === 0 ? (
-        <EmptyState
-          title="No Collision Data in Current Filter Window"
-          description="Run a collision test in the Collision Lab or adjust your date range and segment filters to see telemetry signals appear here."
-          actionLabel="Run your first test"
-          onAction={() => window.location.hash = "/collision-lab"}
-        />
+        <Card className="overflow-hidden p-0">
+          <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="p-6 sm:p-8">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-600 dark:text-brand-400">Welcome</p>
+              <h3 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Launch your first collision dashboard</h3>
+              <p className="mt-3 max-w-xl text-sm text-slate-600 dark:text-slate-300">
+                No live telemetry is in the current window yet. Start with sample data, open the collision lab, or import a MATLAB/CSV run to begin tracking force, energy loss, and momentum conservation.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Button onClick={onLoadSample} variant="primary" className="min-h-[44px] px-4">
+                  <Database className="h-4 w-4" /> Load sample data
+                </Button>
+                <Button onClick={() => (window.location.hash = "/collision-lab")} variant="outline" className="min-h-[44px] px-4">
+                  <FlaskConical className="h-4 w-4" /> Open collision lab
+                </Button>
+                <Button onClick={() => (window.location.hash = "/upload")} variant="outline" className="min-h-[44px] px-4">
+                  <Upload className="h-4 w-4" /> Import MATLAB/CSV
+                </Button>
+              </div>
+            </div>
+            <div className="border-t border-slate-200 bg-slate-50/70 p-6 dark:border-slate-800 dark:bg-[#0b1221]/70 lg:border-l lg:border-t-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Quick actions</p>
+              <div className="mt-4 space-y-3">
+                {[
+                  { label: "Generate base telemetry", action: onLoadSample },
+                  { label: "Compare recent runs", action: () => (window.location.hash = "/compare-runs") },
+                  { label: "Open settings", action: () => (window.location.hash = "/settings") },
+                ].map((item) => (
+                  <button key={item.label} onClick={item.action} className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:border-brand-500/40 hover:bg-brand-500/5 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200">
+                    <span>{item.label}</span>
+                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
       ) : (
         <div className="grid grid-cols-12 gap-4 mobile-chart-grid">
           <div className="col-span-12 xl:col-span-8">
@@ -476,6 +582,9 @@ function CompareRunsPage({ records }: { records: CollisionRecord[] }) {
 
 function SettingsPage() {
   const { dark, toggle, setDark } = useTheme();
+  const [units, setUnits] = useState<"SI" | "Imperial">("SI");
+  const [precision, setPrecision] = useState<"Low" | "Standard" | "High">("Standard");
+
   return (
     <div className="space-y-6 pt-2">
       <SectionHeading
@@ -533,6 +642,44 @@ function SettingsPage() {
             </div>
           </div>
         </Card>
+
+        <Card className="p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
+              <Settings2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">Units & precision</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Choose how the telemetry values are displayed and how closely the simulator tracks each event.</p>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Unit system</span>
+              <select
+                value={units}
+                onChange={(e) => setUnits(e.target.value as "SI" | "Imperial")}
+                className="min-h-[44px] w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-[#0d1424] dark:text-slate-100"
+              >
+                <option value="SI">SI (m/s, N, kg·m/s)</option>
+                <option value="Imperial">Imperial (ft/s, lbf, slug·ft/s)</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Simulation precision</span>
+              <select
+                value={precision}
+                onChange={(e) => setPrecision(e.target.value as "Low" | "Standard" | "High")}
+                className="min-h-[44px] w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-[#0d1424] dark:text-slate-100"
+              >
+                <option value="Low">Low</option>
+                <option value="Standard">Standard</option>
+                <option value="High">High</option>
+              </select>
+            </label>
+          </div>
+        </Card>
       </div>
     </div>
   );
@@ -546,6 +693,11 @@ function Dashboard() {
   const [lab, setLab] = useState<LabConfig>(DEFAULT_LAB);
   const [loadedFrom, setLoadedFrom] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(true);
+  const resetLiveState = useCallback(() => {
+    setIsLive(true);
+    setFilters((current) => ({ ...current, preset: "30d" }));
+    if (records.length) setFilters(defaultFilters(records[0]?.date ?? toISODate(new Date())));
+  }, [records]);
   const [filters, setFilters] = useState<Filters>({
     preset: "30d",
     from: toISODate(new Date()),
@@ -617,11 +769,12 @@ function Dashboard() {
     setLoadedFrom(null);
   }, []);
 
-<<<<<<< HEAD
-  const showFilters = route !== "upload" && route !== "collision-physics" && route !== "mission-control";
-=======
-  const showFilters = route !== "upload" && route !== "settings" && route !== "compare-runs";
->>>>>>> 8cab9acc23ecb6d4c7cc57c74fb1e3d817365e2f
+  const showFilters =
+    route !== "upload" &&
+    route !== "settings" &&
+    route !== "compare-runs" &&
+    route !== "mission-control" &&
+    route !== "collision-physics";
 
   return (
     <div className="relative app-bg min-h-screen">
@@ -640,26 +793,6 @@ function Dashboard() {
           />
         )}
 
-<<<<<<< HEAD
-        <div key={route} className="animate-fade-up">
-          {route === "mission-control" && <MissionControlView />}
-          {route === "overview" && <OverviewPage records={records} filters={filters} onLoad={loadIntoLab} />}
-          {route === "collision-physics" && <CollisionPhysicsModule />}
-          {route === "test-log" && <TestLogPage records={records} filters={filters} onLoad={loadIntoLab} />}
-          {route === "collision-lab" && <Simulator value={lab} onChange={setLabInput} loadedFrom={loadedFrom} />}
-          {route === "upload" && (
-            <>
-              <UploadPage />
-              <Card className="mt-6">
-                <CardHeader
-                  title="Coming from the Collision Lab?"
-                  subtitle="Uploaded runs are charted exactly as uploaded – use the column chips to focus on the signals you care about."
-                />
-              </Card>
-            </>
-          )}
-        </div>
-=======
         <PageHeader route={route} />
 
         {loading ? (
@@ -668,7 +801,19 @@ function Dashboard() {
           <ErrorState title="Telemetry feed unavailable" description={error} onRetry={loadData} />
         ) : (
           <div key={route} className="animate-fade-up">
-            {route === "overview" && <OverviewPage records={records} filters={filters} onLoad={loadIntoLab} />}
+            {route === "mission-control" && <MissionControlView />}
+            {route === "overview" && (
+              <OverviewPage
+                records={records}
+                filters={filters}
+                onLoad={loadIntoLab}
+                isLive={isLive}
+                onToggleLive={() => setIsLive((p) => !p)}
+                onResetLive={resetLiveState}
+                onLoadSample={loadData}
+              />
+            )}
+            {route === "collision-physics" && <CollisionPhysicsModule />}
             {route === "test-log" && <TestLogPage records={records} filters={filters} onLoad={loadIntoLab} />}
             {route === "compare-runs" && <CompareRunsPage records={records} />}
             {route === "settings" && <SettingsPage />}
@@ -686,7 +831,6 @@ function Dashboard() {
             )}
           </div>
         )}
->>>>>>> 8cab9acc23ecb6d4c7cc57c74fb1e3d817365e2f
       </main>
 
       <footer className="relative z-10 border-t border-slate-200/70 py-6 text-center text-xs text-slate-500 dark:border-slate-800/80 dark:text-slate-400">

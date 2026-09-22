@@ -1,16 +1,31 @@
-import { Moon, Radar, Sun, Pause, Play } from "lucide-react";
+import {
+  Activity,
+  FileUp,
+  FlaskConical,
+  GitCompareArrows,
+  ListOrdered,
+  Moon,
+  Orbit,
+  Pause,
+  Play,
+  Radar,
+  Settings,
+  Sun,
+  type LucideIcon,
+} from "lucide-react";
 import { useTheme } from "../hooks/useTheme";
 import type { Route } from "../hooks/useHashRoute";
 import { Button } from "./ui";
 import { cn } from "../utils/cn";
 
-export const NAV: { route: Route; label: string; short: string }[] = [
-  { route: "mission-control", label: "3D Mission Control", short: "3D Live" },
-  { route: "overview", label: "Overview", short: "Overview" },
-  { route: "collision-physics", label: "Collision Physics", short: "2D Physics" },
-  { route: "collision-lab", label: "Collision Lab", short: "Lab" },
-  { route: "test-log", label: "Test log", short: "Log" },
-  { route: "upload", label: "MATLAB import", short: "Upload" },
+export const NAV: { route: Route; label: string; short: string; icon: LucideIcon }[] = [
+  { route: "overview", label: "Live Test", short: "Live", icon: Activity },
+  { route: "test-log", label: "Test Log", short: "Log", icon: ListOrdered },
+  { route: "compare-runs", label: "Compare Runs", short: "Compare", icon: GitCompareArrows },
+  { route: "settings", label: "Settings", short: "Settings", icon: Settings },
+  { route: "collision-physics", label: "Collision Physics", short: "Physics", icon: Orbit },
+  { route: "collision-lab", label: "Collision Lab", short: "Lab", icon: FlaskConical },
+  { route: "upload", label: "MATLAB Import", short: "Upload", icon: FileUp },
 ];
 
 function SignalWaveform({ active }: { active: boolean }) {
@@ -47,51 +62,30 @@ export function Header({
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl transition-colors dark:border-slate-800/80 dark:bg-[#0a0f1d]/90">
-      <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-        {/* Title and Logo */}
-        <button onClick={() => navigate("overview")} className="group flex min-w-0 items-center gap-3 text-left">
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 via-blue-600 to-indigo-700 text-white shadow-lg shadow-brand-500/30 transition-transform duration-200 group-hover:scale-105">
-            <Radar className="h-5 w-5 animate-pulse" />
-            <span
-              className={cn(
-                "absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-slate-950 transition-colors",
-                isLive ? "bg-emerald-500" : "bg-amber-500",
-              )}
-            />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="truncate text-base font-bold tracking-tight text-slate-900 sm:text-lg dark:text-white">
-                Collision Drones <span className="text-brand-500">·</span> Momentum Tracking
-              </h1>
+      <div className="mx-auto max-w-[1600px] px-3 sm:px-6 lg:px-8">
+        <div className="flex min-h-[72px] items-center gap-3 py-3">
+          <button onClick={() => navigate("overview")} className="group flex min-w-0 flex-1 items-center gap-3 text-left lg:flex-none">
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 via-blue-600 to-indigo-700 text-white shadow-lg shadow-brand-500/30 transition-transform duration-200 group-hover:scale-105">
+              <Radar className="h-5 w-5 animate-pulse" />
+              <span
+                className={cn(
+                  "absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-slate-950 transition-colors",
+                  isLive ? "bg-emerald-500" : "bg-amber-500",
+                )}
+              />
             </div>
-            <p className="hidden text-xs text-slate-500 sm:block dark:text-slate-400">
-              Impact telemetry, conservation checks &amp; kinetic energy budgets
-            </p>
-          </div>
-        </button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-base font-bold tracking-tight text-slate-900 sm:text-lg dark:text-white">
+                  Collision Drones <span className="text-brand-500">·</span> Momentum Tracking
+                </h1>
+              </div>
+              <p className="hidden text-xs text-slate-500 sm:block dark:text-slate-400">
+                Impact telemetry, conservation checks &amp; kinetic energy budgets
+              </p>
+            </div>
+          </button>
 
-        {/* Navigation Tabs */}
-        <nav className="hidden items-center gap-1 rounded-xl border border-transparent p-1 md:flex dark:border-slate-800/50 dark:bg-[#0c1222]/60">
-          {NAV.map((n) => (
-            <button
-              key={n.route}
-              onClick={() => navigate(n.route)}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200",
-                route === n.route
-                  ? "bg-brand-500 text-white shadow-sm shadow-brand-500/25 dark:bg-brand-500 dark:text-white"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white",
-              )}
-            >
-              {n.label}
-            </button>
-          ))}
-        </nav>
-
-        {/* Live Controls & Telemetry Signal */}
-        <div className="flex items-center gap-3">
-          {/* Animated Waveform Signal */}
           <div className="hidden items-center gap-2 rounded-xl border border-slate-200/60 bg-slate-50/70 px-2.5 py-1 sm:flex dark:border-slate-800 dark:bg-[#0d1424]/60">
             <SignalWaveform active={isLive} />
             <div className="flex flex-col text-left font-mono">
@@ -107,60 +101,85 @@ export function Header({
             </div>
           </div>
 
-          {/* Live / Paused status toggle */}
-          {onToggleLive && (
-            <button
-              onClick={onToggleLive}
-              title={isLive ? "Click to pause telemetry feed" : "Click to resume telemetry feed"}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-xs font-semibold transition-all duration-200",
-                isLive
-                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:border-emerald-500/25 dark:bg-emerald-500/15 dark:text-emerald-400"
-                  : "border-amber-500/30 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:border-amber-500/25 dark:bg-amber-500/15 dark:text-amber-400",
-              )}
-            >
-              <span className="relative flex h-2 w-2">
-                {isLive && (
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          <div className="flex items-center gap-2">
+            {onToggleLive && (
+              <button
+                onClick={onToggleLive}
+                title={isLive ? "Click to pause telemetry feed" : "Click to resume telemetry feed"}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-xs font-semibold transition-all duration-200",
+                  isLive
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:border-emerald-500/25 dark:bg-emerald-500/15 dark:text-emerald-400"
+                    : "border-amber-500/30 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:border-amber-500/25 dark:bg-amber-500/15 dark:text-amber-400",
                 )}
-                <span
-                  className={cn("relative inline-flex h-2 w-2 rounded-full", isLive ? "bg-emerald-500" : "bg-amber-500")}
-                />
+              >
+                <span className="relative flex h-2 w-2">
+                  {isLive && (
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  )}
+                  <span
+                    className={cn("relative inline-flex h-2 w-2 rounded-full", isLive ? "bg-emerald-500" : "bg-amber-500")}
+                  />
+                </span>
+                <span>{isLive ? "LIVE" : "PAUSED"}</span>
+                {isLive ? <Pause className="h-3 w-3 opacity-70" /> : <Play className="h-3 w-3 opacity-70" />}
+              </button>
+            )}
+
+            <div className="hidden flex-col items-end xl:flex">
+              <span className="font-mono text-[9px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                Last Incident Log
               </span>
-              <span>{isLive ? "LIVE" : "PAUSED"}</span>
-              {isLive ? <Pause className="h-3 w-3 opacity-70" /> : <Play className="h-3 w-3 opacity-70" />}
-            </button>
-          )}
+              <span className="font-mono text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                {lastEventTime}
+              </span>
+            </div>
 
-          {/* Last Event Timestamp */}
-          <div className="hidden flex-col items-end xl:flex">
-            <span className="font-mono text-[9px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Last Incident Log
-            </span>
-            <span className="font-mono text-[11px] font-medium text-slate-700 dark:text-slate-300">
-              {lastEventTime}
-            </span>
+            <Button
+              size="icon"
+              variant="outline"
+              aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={toggle}
+              className="relative overflow-hidden"
+            >
+              <Sun
+                className={`absolute h-4 w-4 transition-all duration-300 ${dark ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"}`}
+              />
+              <Moon
+                className={`absolute h-4 w-4 transition-all duration-300 ${dark ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"}`}
+              />
+            </Button>
           </div>
+        </div>
 
-          {/* Theme Toggle */}
-          <Button
-            size="icon"
-            variant="outline"
-            aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-            onClick={toggle}
-            className="relative overflow-hidden"
+        <div className="pb-3">
+          <nav
+            aria-label="Main navigation"
+            className="flex min-w-max items-center gap-2 overflow-x-auto pb-1 lg:justify-between lg:gap-3"
           >
-            <Sun
-              className={`absolute h-4 w-4 transition-all duration-300 ${dark ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"}`}
-            />
-            <Moon
-              className={`absolute h-4 w-4 transition-all duration-300 ${dark ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"}`}
-            />
-          </Button>
+            {NAV.map((n) => {
+              const Icon = n.icon;
+              return (
+                <button
+                  key={n.route}
+                  onClick={() => navigate(n.route)}
+                  aria-label={n.label}
+                  className={cn(
+                    "inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-medium transition-all duration-200 sm:px-4",
+                    route === n.route
+                      ? "border-brand-500 bg-brand-500 text-white shadow-sm shadow-brand-500/25 dark:border-brand-500 dark:bg-brand-500"
+                      : "border-slate-200 bg-slate-100/80 text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-700/80 dark:hover:text-white",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{n.label}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
       </div>
 
-      {/* Mobile Nav */}
       <nav className="flex gap-1 overflow-x-auto px-4 pb-2 md:hidden">
         {NAV.map((n) => (
           <button
