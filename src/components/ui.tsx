@@ -11,9 +11,10 @@ export function Card({ className, children, ...props }: HTMLAttributes<HTMLDivEl
   return (
     <div
       className={cn(
-        "relative rounded-2xl border border-slate-200/80 bg-white/85 p-0 shadow-sm shadow-slate-200/50 backdrop-blur-md transition-all duration-200",
-        "dark:border-slate-800/80 dark:bg-[#0f172a]/70 dark:shadow-[0_12px_32px_-6px_rgba(0,0,0,0.55)] dark:backdrop-blur-xl dark:hover:border-brand-500/25",
-        "before:pointer-events-none before:absolute before:inset-0 before:rounded-2xl before:border before:border-transparent dark:before:border-white/[0.05]",
+        "card-surface relative isolate overflow-hidden rounded-2xl border border-slate-200/80 bg-white/85 p-0 shadow-[0_12px_32px_-18px_rgba(15,23,42,0.38)] backdrop-blur-md transition-all duration-300",
+        "dark:border-slate-800/80 dark:bg-[#0f172a]/70 dark:shadow-[0_18px_42px_-16px_rgba(0,0,0,0.7)] dark:backdrop-blur-xl dark:hover:border-brand-500/25",
+        "before:pointer-events-none before:absolute before:inset-0 before:rounded-2xl before:border before:border-transparent before:bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.85),transparent_42%)] dark:before:border-white/[0.05] dark:before:bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.18),transparent_38%)]",
+        "after:pointer-events-none after:absolute after:inset-x-5 after:top-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/70 after:to-transparent dark:after:via-white/10",
         className,
       )}
       {...props}
