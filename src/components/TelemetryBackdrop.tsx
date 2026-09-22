@@ -1,7 +1,12 @@
 export function TelemetryBackdrop() {
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden opacity-30 dark:opacity-40">
-      <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
+      <svg
+        className="h-full w-full"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 1920 1080"
+        preserveAspectRatio="xMidYMid slice"
+      >
         <defs>
           <linearGradient id="flightPathGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#3b82f6" stopOpacity="0" />

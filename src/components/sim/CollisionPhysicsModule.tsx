@@ -11,23 +11,15 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  ZAxis,
 } from "recharts";
 import {
-  Activity,
-  AlertCircle,
   Check,
   ChevronLeft,
   ChevronRight,
   Flame,
-  Gauge,
   Pause,
   Play,
   RotateCcw,
-  Settings2,
-  Sliders,
-  Sparkles,
-  Zap,
 } from "lucide-react";
 import {
   DEFAULT_SIM_CONFIG,
@@ -38,7 +30,7 @@ import {
 } from "../../lib/collisionPhysicsSim";
 import { fmt } from "../../lib/format";
 import { Badge, Button, Card, CardHeader, SectionHeading, StatTile } from "../ui";
-import { ANIM, ChartLegend, ChartTooltip, useChartTheme } from "../charts/common";
+import { ChartTooltip, useChartTheme } from "../charts/common";
 
 const COLORS = {
   drone1: "#3b82f6", // Electric blue
@@ -109,24 +101,6 @@ export function CollisionPhysicsModule() {
   const currentStep: SimStep = sim.steps[currentIdx] || sim.steps[0];
   const crashTime = sim.crashTime;
 
-  // Trajectory points up to current replay step with fading trail
-  const trajectoryData = useMemo(() => {
-    const maxTrail = 80;
-    const startIdx = Math.max(0, currentIdx - maxTrail);
-    const visibleSteps = sim.steps.slice(startIdx, currentIdx + 1);
-
-    return visibleSteps.map((s, idx) => {
-      const opacity = Math.max(0.15, (idx + 1) / visibleSteps.length);
-      return {
-        x1: s.x1,
-        y1: s.y1,
-        x2: s.x2,
-        y2: s.y2,
-        t: s.t,
-        opacity,
-      };
-    });
-  }, [sim.steps, currentIdx]);
 
   // Full trajectory paths for background line render
   const fullPathDrone1 = useMemo(() => sim.steps.map((s) => ({ x: s.x1, y: s.y1 })), [sim.steps]);
@@ -328,7 +302,7 @@ export function CollisionPhysicsModule() {
                   content={
                     <ChartTooltip
                       labelFormatter={(_l, items) => `t = ${fmt(items[0]?.payload?.t ?? currentStep.t, 2)}s`}
-                      valueFormatter={(v, name) => `${fmt(v, 2)} m`}
+                      valueFormatter={(v) => `${fmt(v, 2)} m`}
                     />
                   }
                 />

@@ -331,7 +331,7 @@ export function Donut({
                 <Tooltip
                   content={
                     <ChartTooltip
-                      valueFormatter={(v, name) => `${valueFormatter(v)} (${total ? fmt((v / total) * 100, 1) : 0}%)`}
+                      valueFormatter={(v) => `${valueFormatter(v)} (${total ? fmt((v / total) * 100, 1) : 0}%)`}
                     />
                   }
                 />

@@ -553,13 +553,30 @@ export function DataTable({ records, onLoad }: { records: CollisionRecord[]; onL
       </div>
 
       {/* Pagination Controls */}
-      <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-slate-800/80 dark:text-slate-400">
-        <div>
-          Showing <span className="font-mono font-medium text-slate-800 dark:text-slate-200">{filtered.length ? page * pageSize + 1 : 0}</span> to{" "}
-          <span className="font-mono font-medium text-slate-800 dark:text-slate-200">
-            {Math.min((page + 1) * pageSize, filtered.length)}
-          </span>{" "}
-          of <span className="font-mono font-medium text-slate-800 dark:text-slate-200">{filtered.length}</span> tests
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-slate-800/80 dark:text-slate-400">
+        <div className="flex items-center gap-3">
+          <div>
+            Showing <span className="font-mono font-medium text-slate-800 dark:text-slate-200">{filtered.length ? page * pageSize + 1 : 0}</span> to{" "}
+            <span className="font-mono font-medium text-slate-800 dark:text-slate-200">
+              {Math.min((page + 1) * pageSize, filtered.length)}
+            </span>{" "}
+            of <span className="font-mono font-medium text-slate-800 dark:text-slate-200">{filtered.length}</span> tests
+          </div>
+          <div className="flex items-center gap-1.5 text-slate-400">
+            <span>Rows:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(0);
+              }}
+              className="rounded border border-slate-200 bg-white px-2 py-0.5 font-mono text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button

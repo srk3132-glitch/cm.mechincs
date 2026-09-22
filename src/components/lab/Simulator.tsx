@@ -22,6 +22,7 @@ import {
   velocityRange,
   radiusFromMass,
   inertiaFromMassAndRadius,
+  clamp,
   type LabConfig,
 } from "../../lib/physics";
 import { fmt } from "../../lib/format";

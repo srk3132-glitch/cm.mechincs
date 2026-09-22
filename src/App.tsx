@@ -30,6 +30,8 @@ import {
   VelocityChart,
 } from "./components/charts/OverviewCharts";
 import { Simulator } from "./components/lab/Simulator";
+import { CollisionPhysicsModule } from "./components/sim/CollisionPhysicsModule";
+import { MissionControlView } from "./components/mission/MissionControlView";
 import { DataTable } from "./components/DataTable";
 import { UploadPage } from "./components/upload/UploadPage";
 import { Card, CardHeader, SectionHeading, Badge, Button } from "./components/ui";
@@ -267,7 +269,7 @@ function Dashboard() {
     setLoadedFrom(null);
   }, []);
 
-  const showFilters = route !== "upload";
+  const showFilters = route !== "upload" && route !== "collision-physics" && route !== "mission-control";
 
   return (
     <div className="relative app-bg min-h-screen">
@@ -296,7 +298,9 @@ function Dashboard() {
         )}
 
         <div key={route} className="animate-fade-up">
+          {route === "mission-control" && <MissionControlView />}
           {route === "overview" && <OverviewPage records={records} filters={filters} onLoad={loadIntoLab} />}
+          {route === "collision-physics" && <CollisionPhysicsModule />}
           {route === "test-log" && <TestLogPage records={records} filters={filters} onLoad={loadIntoLab} />}
           {route === "collision-lab" && <Simulator value={lab} onChange={setLabInput} loadedFrom={loadedFrom} />}
           {route === "upload" && (

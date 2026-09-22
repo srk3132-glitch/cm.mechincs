@@ -5,6 +5,7 @@ import { Button } from "./ui";
 import { cn } from "../utils/cn";
 
 export const NAV: { route: Route; label: string; short: string }[] = [
+  { route: "mission-control", label: "3D Mission Control", short: "3D Live" },
   { route: "overview", label: "Overview", short: "Overview" },
   { route: "collision-physics", label: "Collision Physics", short: "2D Physics" },
   { route: "collision-lab", label: "Collision Lab", short: "Lab" },

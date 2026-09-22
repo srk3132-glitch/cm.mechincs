@@ -176,7 +176,7 @@ export function runTwoDroneSimulation(cfg: SimConfig = DEFAULT_SIM_CONFIG): SimR
 
           // Add spin from tangential impulse: w -= R * jt / I
           w1 -= (R1 * jt) / I1;
-          w2 += (R2 * jt) / I2;
+          w2 -= (R2 * jt) / I2;
 
           crashed = true;
           crashIndex = i;
