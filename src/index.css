@@ -59,6 +59,19 @@ html {
 body {
   @apply bg-slate-50 text-slate-900 antialiased dark:bg-[#0a0f1d] dark:text-slate-100;
   transition: background-color 0.3s ease, color 0.3s ease;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(91, 130, 255, 0.12), transparent 22%),
+    radial-gradient(circle at 80% 12%, rgba(255, 121, 92, 0.1), transparent 22%),
+    radial-gradient(circle at 50% 100%, rgba(79, 174, 255, 0.08), transparent 26%);
+  opacity: 0.85;
 }
 
 .dark body {
@@ -66,24 +79,57 @@ body {
   background-attachment: fixed;
 }
 
+.dark body::before {
+  background-image:
+    radial-gradient(circle at 15% 15%, rgba(77, 141, 252, 0.18), transparent 20%),
+    radial-gradient(circle at 85% 18%, rgba(255, 107, 92, 0.1), transparent 18%),
+    linear-gradient(rgba(255,255,255,0.02), rgba(255,255,255,0.02));
+  opacity: 1;
+}
+
 /* Deep graphite/navy HUD telemetry background with radial vignette and fine grid */
 .app-bg {
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59, 130, 246, 0.08), transparent 70%),
-    linear-gradient(to right, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
+    radial-gradient(ellipse 80% 48% at 50% -12%, rgba(77, 141, 252, 0.1), transparent 72%),
+    linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
   background-size: 100% 100%, 28px 28px, 28px 28px;
 }
 
 .dark .app-bg {
   background-image:
-    radial-gradient(ellipse 90% 45% at 50% -5%, rgba(59, 130, 246, 0.16), transparent 70%),
-    radial-gradient(ellipse 60% 30% at 90% 95%, rgba(245, 158, 11, 0.05), transparent 60%),
-    radial-gradient(circle at 10% 40%, rgba(239, 68, 68, 0.04), transparent 45%),
+    radial-gradient(ellipse 88% 52% at 50% -4%, rgba(77, 141, 252, 0.27), transparent 70%),
+    radial-gradient(ellipse 65% 35% at 90% 95%, rgba(255, 123, 92, 0.08), transparent 60%),
+    radial-gradient(circle at 10% 38%, rgba(87, 212, 255, 0.05), transparent 45%),
     linear-gradient(to right, rgba(59, 130, 246, 0.04) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 100% 100%, 28px 28px, 28px 28px;
   background-attachment: fixed;
+}
+
+.card-surface {
+  transform: translate3d(0, 0, 0);
+  box-shadow:
+    0 16px 40px -20px rgba(15, 23, 42, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.dark .card-surface {
+  box-shadow:
+    0 16px 40px -18px rgba(15, 23, 42, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.card-surface:hover {
+  box-shadow:
+    0 18px 42px -18px rgba(15, 23, 42, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.dark .card-surface:hover {
+  box-shadow:
+    0 20px 48px -18px rgba(2, 6, 23, 0.95),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* Glassmorphism card utilities with 1px inner border-glow */

@@ -8,10 +8,6 @@ import {
   ResponsiveContainer,
   Scatter,
   ScatterChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-  ZAxis,
 } from "recharts";
 import {
   Activity,
@@ -41,13 +37,254 @@ import { Badge, Button, Card, CardHeader, SectionHeading, StatTile } from "../ui
 import { ANIM, ChartLegend, ChartTooltip, useChartTheme } from "../charts/common";
 
 const COLORS = {
-  drone1: "#3b82f6", // Electric blue
-  drone2: "#f59e0b", // Amber / soft red
-  total: "#f8fafc",  // Neutral white / light gray for dark theme
+  drone1: "#4d8dfc",
+  drone2: "#ff9d5c",
+  total: "#f8fafc",
   totalDark: "#0f172a",
-  impact: "#ef4444", // Soft red
-  trail: "#06b6d4",
+  impact: "#ff6b5c",
+  trail: "#57d4ff",
 };
+
+function hexToRgba(hex: string, alpha: number) {
+  const value = hex.replace("#", "");
+  const full = value.length === 3 ? value.split("").map((c) => c + c).join("") : value;
+  const int = Number.parseInt(full, 16);
+  const r = (int >> 16) & 255;
+  const g = (int >> 8) & 255;
+  const b = int & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function TrajectoryCanvas({
+  sim,
+  currentStep,
+  currentIdx,
+  crashTime,
+  impactActive,
+  config,
+}: {
+  sim: ReturnType<typeof runTwoDroneSimulation>;
+  currentStep: SimStep;
+  currentIdx: number;
+  crashTime: number | null;
+  impactActive: number | null;
+  config: SimConfig;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(720, rect.width || 820);
+    const height = 320;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+
+    const pad = { x: 32, y: 24 };
+    const plotWidth = width - pad.x * 2;
+    const plotHeight = height - pad.y * 2;
+    const allX = sim.steps.flatMap((s) => [s.x1, s.x2]);
+    const allY = sim.steps.flatMap((s) => [s.y1, s.y2]);
+    const minX = Math.min(...allX, -4.5);
+    const maxX = Math.max(...allX, 4.5);
+    const minY = Math.min(...allY, -2.5);
+    const maxY = Math.max(...allY, 2.5);
+    const spanX = Math.max(maxX - minX, 1e-6);
+    const spanY = Math.max(maxY - minY, 1e-6);
+    const toX = (x: number) => pad.x + ((x - minX) / spanX) * plotWidth;
+    const toY = (y: number) => height - pad.y - ((y - minY) / spanY) * plotHeight;
+
+    const bg = ctx.createRadialGradient(width * 0.54, height * 0.28, 20, width * 0.54, height * 0.28, width * 0.7);
+    bg.addColorStop(0, "rgba(77, 141, 252, 0.12)");
+    bg.addColorStop(0.5, "rgba(59, 130, 246, 0.05)");
+    bg.addColorStop(1, "rgba(15, 23, 42, 0)");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.1)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= 12; x += 1) {
+      const px = (x / 12) * plotWidth + pad.x;
+      ctx.beginPath();
+      ctx.moveTo(px, pad.y);
+      ctx.lineTo(px, height - pad.y);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= 8; y += 1) {
+      const py = (y / 8) * plotHeight + pad.y;
+      ctx.beginPath();
+      ctx.moveTo(pad.x, py);
+      ctx.lineTo(width - pad.x, py);
+      ctx.stroke();
+    }
+
+    const referenceX = toX(0);
+    const referenceY = toY(0);
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.22)";
+    ctx.setLineDash([4, 5]);
+    ctx.beginPath();
+    ctx.moveTo(referenceX, pad.y);
+    ctx.lineTo(referenceX, height - pad.y);
+    ctx.moveTo(pad.x, referenceY);
+    ctx.lineTo(width - pad.x, referenceY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const drawPath = (coords: Array<{ x: number; y: number }>, color: string, lineAlpha: number) => {
+      if (coords.length < 2) return;
+      ctx.beginPath();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = 2.4;
+      ctx.strokeStyle = hexToRgba(color, lineAlpha);
+      ctx.shadowBlur = 16;
+      ctx.shadowColor = color;
+      ctx.moveTo(toX(coords[0].x), toY(coords[0].y));
+      for (let i = 1; i < coords.length; i += 1) {
+        const p = coords[i];
+        ctx.lineTo(toX(p.x), toY(p.y));
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    };
+
+    const fullPath1 = sim.steps.map((s) => ({ x: s.x1, y: s.y1 }));
+    const fullPath2 = sim.steps.map((s) => ({ x: s.x2, y: s.y2 }));
+    drawPath(fullPath1, COLORS.drone1, 0.18);
+    drawPath(fullPath2, COLORS.drone2, 0.16);
+
+    const trailWin = 85;
+    const trailStart = Math.max(0, currentIdx - trailWin);
+    const visibleSteps = sim.steps.slice(trailStart, currentIdx + 1);
+    const drawTrail = (points: Array<{ x: number; y: number }>, color: string) => {
+      if (points.length < 2) return;
+      const grad = ctx.createLinearGradient(0, 0, width, 0);
+      grad.addColorStop(0, hexToRgba(color, 0));
+      grad.addColorStop(0.2, hexToRgba(color, 0.15));
+      grad.addColorStop(0.7, hexToRgba(color, 0.8));
+      grad.addColorStop(1, hexToRgba(color, 1));
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 4;
+      ctx.shadowBlur = 22;
+      ctx.shadowColor = color;
+      ctx.beginPath();
+      ctx.moveTo(toX(points[0].x), toY(points[0].y));
+      for (let i = 1; i < points.length; i += 1) {
+        ctx.lineTo(toX(points[i].x), toY(points[i].y));
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    };
+
+    drawTrail(
+      visibleSteps.map((s) => ({ x: s.x1, y: s.y1 })),
+      COLORS.drone1,
+    );
+    drawTrail(
+      visibleSteps.map((s) => ({ x: s.x2, y: s.y2 })),
+      COLORS.drone2,
+    );
+
+    const markers = [
+      { x: currentStep.x1, y: currentStep.y1, color: COLORS.drone1, label: "1", radius: 10 },
+      { x: currentStep.x2, y: currentStep.y2, color: COLORS.drone2, label: "2", radius: 9 },
+    ];
+
+    markers.forEach((marker) => {
+      const cx = toX(marker.x);
+      const cy = toY(marker.y);
+      const glow = impactActive ? 36 : 18;
+      ctx.beginPath();
+      ctx.fillStyle = hexToRgba(marker.color, 0.14);
+      ctx.shadowBlur = glow;
+      ctx.shadowColor = marker.color;
+      ctx.arc(cx, cy, marker.radius + 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.fillStyle = marker.color;
+      ctx.shadowBlur = 26;
+      ctx.shadowColor = marker.color;
+      ctx.arc(cx, cy, marker.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(255,255,255,0.8)";
+      ctx.lineWidth = 1.6;
+      ctx.arc(cx, cy, marker.radius + 2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = "700 10px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(marker.label, cx, cy + 1);
+    });
+
+    if (impactActive !== null) {
+      const elapsed = (performance.now() - impactActive) / 700;
+      const t = clamp(elapsed, 0, 1);
+      const impactX = toX(sim.crashX ?? 0);
+      const impactY = toY(sim.crashY ?? 0);
+      const ringRadius = 18 + t * 116;
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(255, 107, 92, ${1 - t})`;
+      ctx.lineWidth = 2.5;
+      ctx.shadowBlur = 28;
+      ctx.shadowColor = COLORS.impact;
+      ctx.arc(impactX, impactY, ringRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      if (t < 1) {
+        const flash = ctx.createRadialGradient(impactX, impactY, 8, impactX, impactY, 100);
+        flash.addColorStop(0, `rgba(255, 255, 255, ${0.4 - t * 0.22})`);
+        flash.addColorStop(0.2, `rgba(255, 107, 92, ${0.28 - t * 0.14})`);
+        flash.addColorStop(1, "rgba(255, 107, 92, 0)");
+        ctx.fillStyle = flash;
+        ctx.fillRect(impactX - 120, impactY - 120, 240, 240);
+      }
+    }
+
+    if (crashTime !== null && currentStep.t >= crashTime && sim.crashX !== null && sim.crashY !== null) {
+      const impactX = toX(sim.crashX);
+      const impactY = toY(sim.crashY);
+      const pulse = 8 + ((currentStep.t - crashTime) / 0.5) * 24;
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(255, 107, 92, 0.18)";
+      ctx.arc(impactX, impactY, pulse, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (config.p1x !== undefined && config.p2x !== undefined) {
+      const start1X = toX(config.p1x);
+      const start1Y = toY(config.p1y);
+      const start2X = toX(config.p2x);
+      const start2Y = toY(config.p2y);
+      ctx.beginPath();
+      ctx.fillStyle = hexToRgba(COLORS.drone1, 0.9);
+      ctx.arc(start1X, start1Y, 3.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.fillStyle = hexToRgba(COLORS.drone2, 0.9);
+      ctx.arc(start2X, start2Y, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }, [config, crashTime, currentIdx, currentStep, impactActive, sim]);
+
+  return <canvas ref={canvasRef} className="h-[320px] w-full rounded-2xl" aria-label="Broadcast trajectory simulation" />;
+}
 
 export function CollisionPhysicsModule() {
   const th = useChartTheme();
@@ -61,6 +298,7 @@ export function CollisionPhysicsModule() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
+  const [impactFlashAt, setImpactFlashAt] = useState<number | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
 
@@ -68,7 +306,16 @@ export function CollisionPhysicsModule() {
   useEffect(() => {
     setCurrentIdx(0);
     setPlaying(true);
+    if (sim.crashTime !== null) {
+      setImpactFlashAt(performance.now());
+    }
   }, [sim]);
+
+  useEffect(() => {
+    if (impactFlashAt === null) return;
+    const timeout = window.setTimeout(() => setImpactFlashAt(null), 700);
+    return () => window.clearTimeout(timeout);
+  }, [impactFlashAt]);
 
   // Playback animation loop
   useEffect(() => {
@@ -301,117 +548,14 @@ export function CollisionPhysicsModule() {
             }
           />
           <div className="px-3 pb-4 pt-2" style={{ height: 320 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 15, right: 20, bottom: 20, left: 10 }}>
-                <CartesianGrid stroke={th.grid} />
-                <XAxis
-                  type="number"
-                  dataKey="x"
-                  name="Pos X"
-                  domain={[-4.5, 4.5]}
-                  tick={th.tickStyle}
-                  axisLine={{ stroke: th.axisLine }}
-                  label={{ value: "Position X (m)", position: "insideBottom", offset: -12, fontSize: 10, fill: th.muted }}
-                />
-                <YAxis
-                  type="number"
-                  dataKey="y"
-                  name="Pos Y"
-                  domain={[-2.5, 2.5]}
-                  tick={th.tickStyle}
-                  axisLine={false}
-                  width={36}
-                  label={{ value: "Position Y (m)", angle: -90, position: "insideLeft", fontSize: 10, fill: th.muted }}
-                />
-                <Tooltip
-                  cursor={{ strokeDasharray: "3 3", stroke: th.cursor }}
-                  content={
-                    <ChartTooltip
-                      labelFormatter={(_l, items) => `t = ${fmt(items[0]?.payload?.t ?? currentStep.t, 2)}s`}
-                      valueFormatter={(v, name) => `${fmt(v, 2)} m`}
-                    />
-                  }
-                />
-
-                {/* Reference Center Lines */}
-                <ReferenceLine x={0} stroke={th.axisLine} strokeDasharray="3 3" opacity={0.4} />
-                <ReferenceLine y={0} stroke={th.axisLine} strokeDasharray="3 3" opacity={0.4} />
-
-                {/* Full paths (faint background paths) */}
-                <Scatter
-                  name="Full Path Drone 1"
-                  data={fullPathDrone1}
-                  line={{ stroke: COLORS.drone1, strokeWidth: 1.2, strokeDasharray: "3 3" }}
-                  fill="none"
-                  shape={() => null}
-                  isAnimationActive={false}
-                />
-                <Scatter
-                  name="Full Path Drone 2"
-                  data={fullPathDrone2}
-                  line={{ stroke: COLORS.drone2, strokeWidth: 1.2, strokeDasharray: "3 3" }}
-                  fill="none"
-                  shape={() => null}
-                  isAnimationActive={false}
-                />
-
-                {/* Start Position Markers */}
-                <Scatter
-                  name="Start Drone 1"
-                  data={[{ x: config.p1x, y: config.p1y }]}
-                  fill={COLORS.drone1}
-                  shape="circle"
-                  legendType="none"
-                />
-                <Scatter
-                  name="Start Drone 2"
-                  data={[{ x: config.p2x, y: config.p2y }]}
-                  fill={COLORS.drone2}
-                  shape="circle"
-                  legendType="none"
-                />
-
-                {/* Crash Point Burst Marker */}
-                {sim.crashX !== null && sim.crashY !== null && currentStep.t >= (sim.crashTime ?? 0) && (
-                  <Scatter
-                    name="Impact Point"
-                    data={[{ x: sim.crashX, y: sim.crashY }]}
-                    fill={COLORS.impact}
-                    shape="star"
-                  />
-                )}
-
-                {/* Active Moving Drones */}
-                <Scatter
-                  name="Drone 1 Current"
-                  data={[{ x: currentStep.x1, y: currentStep.y1 }]}
-                  fill={COLORS.drone1}
-                  shape={(props: any) => (
-                    <g>
-                      <circle cx={props.cx} cy={props.cy} r={9} fill={COLORS.drone1} fillOpacity={0.8} />
-                      <circle cx={props.cx} cy={props.cy} r={14} fill="none" stroke={COLORS.drone1} strokeWidth={1.5} className="animate-ping" opacity={0.4} />
-                      <text x={props.cx} y={props.cy + 3.5} textAnchor="middle" fontSize={9} fill="#fff" fontWeight="bold">
-                        1
-                      </text>
-                    </g>
-                  )}
-                />
-                <Scatter
-                  name="Drone 2 Current"
-                  data={[{ x: currentStep.x2, y: currentStep.y2 }]}
-                  fill={COLORS.drone2}
-                  shape={(props: any) => (
-                    <g>
-                      <circle cx={props.cx} cy={props.cy} r={8} fill={COLORS.drone2} fillOpacity={0.8} />
-                      <circle cx={props.cx} cy={props.cy} r={13} fill="none" stroke={COLORS.drone2} strokeWidth={1.5} className="animate-ping" opacity={0.4} />
-                      <text x={props.cx} y={props.cy + 3.5} textAnchor="middle" fontSize={9} fill="#fff" fontWeight="bold">
-                        2
-                      </text>
-                    </g>
-                  )}
-                />
-              </ScatterChart>
-            </ResponsiveContainer>
+            <TrajectoryCanvas
+              sim={sim}
+              currentStep={currentStep}
+              currentIdx={currentIdx}
+              crashTime={crashTime}
+              impactActive={impactFlashAt}
+              config={config}
+            />
           </div>
         </Card>
 

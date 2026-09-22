@@ -2,15 +2,15 @@ import type { ReactNode } from "react";
 import { useTheme } from "../../hooks/useTheme";
 
 export const PALETTE = {
-  blue: "#3b82f6",     // Electric blue for velocity & approach
-  violet: "#8b5cf6",   // System momentum & total energy
-  emerald: "#10b981",  // Elastic collision & nominal state
-  amber: "#f59e0b",    // Kinetic energy & impact loads
-  rose: "#ef4444",     // Soft red for collision / impact events & anomalies
-  cyan: "#06b6d4",     // Closing velocity & spin dynamics
+  blue: "#4d8dfc",     // richer broadcast-grade blue for velocity & approach
+  violet: "#8f7cf6",   // refined violet for system momentum & total energy
+  emerald: "#3ec9a4",  // richer green for nominal state
+  amber: "#f7a35c",    // warm amber for kinetic energy & impact loads
+  rose: "#ff6b5c",     // softened collision red
+  cyan: "#57d4ff",     // bright cyan for spin dynamics
   slate: "#64748b",
-  pink: "#ec4899",
-  lime: "#84cc16",
+  pink: "#ff7aca",
+  lime: "#9adf56",
 };
 
 export const TYPE_COLORS: Record<string, string> = {
