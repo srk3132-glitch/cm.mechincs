@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ThemeProvider } from "./hooks/useTheme";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { ThemeProvider, useTheme } from "./hooks/useTheme";
 import { useHashRoute, type Route } from "./hooks/useHashRoute";
 import { generateRecords, type CollisionRecord } from "./data/generateData";
 import {
@@ -13,6 +13,7 @@ import {
   type Filters,
 } from "./lib/analytics";
 import type { LabConfig } from "./lib/physics";
+import type { Dataset } from "./lib/parsers/dataset";
 import { dayDiff, fromISODate, toISODate, fmt, fmtDateTime } from "./lib/format";
 import { Header } from "./components/Header";
 import { FilterBar } from "./components/FilterBar";
@@ -29,14 +30,24 @@ import {
   TypeDonut,
   VelocityChart,
 } from "./components/charts/OverviewCharts";
-import { Simulator } from "./components/lab/Simulator";
-import { CollisionPhysicsModule } from "./components/sim/CollisionPhysicsModule";
-import { MissionControlView } from "./components/mission/MissionControlView";
 import { DataTable } from "./components/DataTable";
-import { UploadPage } from "./components/upload/UploadPage";
+
+const MissionControlView = lazy(() =>
+  import("./components/mission/MissionControlView").then((module) => ({ default: module.MissionControlView })),
+);
+const CollisionPhysicsModule = lazy(() =>
+  import("./components/sim/CollisionPhysicsModule").then((module) => ({ default: module.CollisionPhysicsModule })),
+);
+const Simulator = lazy(() =>
+  import("./components/lab/Simulator").then((module) => ({ default: module.Simulator })),
+);
+const UploadPage = lazy(() =>
+  import("./components/upload/UploadPage").then((module) => ({ default: module.UploadPage })),
+);
 import { Card, CardHeader, SectionHeading, Badge, Button } from "./components/ui";
 import { TelemetryBackdrop } from "./components/TelemetryBackdrop";
 import { LoadingSkeleton } from "./components/LoadingSkeleton";
+import { cn } from "./utils/cn";
 import {
   BarChart3,
   ChevronDown,
@@ -692,6 +703,7 @@ function Dashboard() {
   const [route, navigate] = useHashRoute();
   const [lab, setLab] = useState<LabConfig>(DEFAULT_LAB);
   const [loadedFrom, setLoadedFrom] = useState<string | null>(null);
+  const [uploadedDataset, setUploadedDataset] = useState<Dataset | null>(null);
   const [isLive, setIsLive] = useState(true);
   const resetLiveState = useCallback(() => {
     setIsLive(true);
@@ -801,7 +813,11 @@ function Dashboard() {
           <ErrorState title="Telemetry feed unavailable" description={error} onRetry={loadData} />
         ) : (
           <div key={route} className="animate-fade-up">
-            {route === "mission-control" && <MissionControlView />}
+            {route === "mission-control" && (
+              <Suspense fallback={<LoadingSkeleton />}>
+                <MissionControlView />
+              </Suspense>
+            )}
             {route === "overview" && (
               <OverviewPage
                 records={records}
@@ -813,21 +829,34 @@ function Dashboard() {
                 onLoadSample={loadData}
               />
             )}
-            {route === "collision-physics" && <CollisionPhysicsModule />}
+            {route === "collision-physics" && (
+              <Suspense fallback={<LoadingSkeleton />}>
+                <CollisionPhysicsModule importedDataset={uploadedDataset} />
+              </Suspense>
+            )}
             {route === "test-log" && <TestLogPage records={records} filters={filters} onLoad={loadIntoLab} />}
             {route === "compare-runs" && <CompareRunsPage records={records} />}
             {route === "settings" && <SettingsPage />}
-            {route === "collision-lab" && <Simulator value={lab} onChange={setLabInput} loadedFrom={loadedFrom} />}
+            {route === "collision-lab" && (
+              <Suspense fallback={<LoadingSkeleton />}>
+                <Simulator value={lab} onChange={setLabInput} loadedFrom={loadedFrom} />
+              </Suspense>
+            )}
             {route === "upload" && (
-              <>
-                <UploadPage />
-                <Card className="mt-6">
-                  <CardHeader
-                    title="Coming from the Collision Lab?"
-                    subtitle="Uploaded runs are charted exactly as uploaded – use the column chips to focus on the signals you care about."
-                  />
-                </Card>
-              </>
+              <Suspense fallback={<LoadingSkeleton />}>
+                <>
+                  <UploadPage onFileLoaded={(dataset: Dataset) => {
+                    setUploadedDataset(dataset);
+                    navigate("collision-physics");
+                  }} />
+                  <Card className="mt-6">
+                    <CardHeader
+                      title="Coming from the Collision Lab?"
+                      subtitle="Uploaded runs are charted exactly as uploaded – use the column chips to focus on the signals you care about."
+                    />
+                  </Card>
+                </>
+              </Suspense>
             )}
           </div>
         )}

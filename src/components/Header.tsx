@@ -22,7 +22,6 @@ export const NAV: { route: Route; label: string; short: string; icon: LucideIcon
   { route: "overview", label: "Live Test", short: "Live", icon: Activity },
   { route: "test-log", label: "Test Log", short: "Log", icon: ListOrdered },
   { route: "compare-runs", label: "Compare Runs", short: "Compare", icon: GitCompareArrows },
-  { route: "settings", label: "Settings", short: "Settings", icon: Settings },
   { route: "collision-physics", label: "Collision Physics", short: "Physics", icon: Orbit },
   { route: "collision-lab", label: "Collision Lab", short: "Lab", icon: FlaskConical },
   { route: "upload", label: "MATLAB Import", short: "Upload", icon: FileUp },
@@ -134,6 +133,17 @@ export function Header({
                 {lastEventTime}
               </span>
             </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Open settings"
+              onClick={() => navigate("settings")}
+              className="inline-flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              <span className="text-xs font-medium">Settings</span>
+            </Button>
 
             <Button
               size="icon"

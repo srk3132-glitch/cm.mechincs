@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 
 export const ROUTES = [
   "mission-control",
@@ -36,11 +36,20 @@ export function useHashRoute(): [Route, (r: Route) => void] {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  const navigate = (r: Route) => {
+  const navigate = useCallback((r: Route) => {
+    if (r === route) return;
+
     window.location.hash = `/${r}`;
-    setRoute(r);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+    startTransition(() => {
+      setRoute(r);
+    });
+
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
+  }, [route]);
 
   return [route, navigate];
 }

@@ -33,7 +33,7 @@ writetimetable(T, 'run.csv');        % CSV (recommended)
 % or keep the .mat format
 save('run.mat', 't', 'v1', 'v2', 'p1', 'p2', 'ke1', 'ke2', 'F', '-v7');`;
 
-export function UploadPage() {
+export function UploadPage({ onFileLoaded }: { onFileLoaded?: (dataset: Dataset) => void }) {
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,6 +53,7 @@ export function UploadPage() {
       setXColumn(ds.xColumn);
       setHidden(new Set([ds.xColumn]));
       setHistColumn(ds.numericColumns.find((c) => c !== ds.xColumn) ?? ds.xColumn);
+      onFileLoaded?.(ds);
     } catch (err) {
       setDataset(null);
       setError(err instanceof DatasetError || err instanceof Error ? err.message : "That file could not be read.");
@@ -69,6 +70,7 @@ export function UploadPage() {
       setXColumn(ds.xColumn);
       setHidden(new Set([ds.xColumn]));
       setHistColumn(ds.numericColumns.find((c) => c !== ds.xColumn) ?? ds.xColumn);
+      onFileLoaded?.(ds);
     } catch {
       setError("Sample data could not be loaded.");
     }

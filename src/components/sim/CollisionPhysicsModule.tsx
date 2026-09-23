@@ -29,8 +29,10 @@ import {
   type SimStep,
 } from "../../lib/collisionPhysicsSim";
 import { fmt } from "../../lib/format";
+import type { Dataset } from "../../lib/parsers/dataset";
 import { Badge, Button, Card, CardHeader, SectionHeading, StatTile } from "../ui";
 import { ChartTooltip, useChartTheme } from "../charts/common";
+import { DatasetCharts, DatasetEnergyDonut, DatasetHistogram } from "../upload/DatasetCharts";
 
 const COLORS = {
   drone1: "#3b82f6", // Electric blue
@@ -41,9 +43,36 @@ const COLORS = {
   trail: "#06b6d4",
 };
 
-export function CollisionPhysicsModule() {
+export function CollisionPhysicsModule({ importedDataset }: { importedDataset?: Dataset | null }) {
   const th = useChartTheme();
   const [config, setConfig] = useState<SimConfig>(DEFAULT_SIM_CONFIG);
+
+  if (importedDataset) {
+    const selected = importedDataset.numericColumns.filter((column) => column !== importedDataset.xColumn);
+    const visible = selected.length ? selected : importedDataset.numericColumns.slice(0, 3);
+
+    return (
+      <div className="space-y-6 pt-6">
+        <SectionHeading
+          eyebrow="Imported physics results"
+          title={`${importedDataset.name} · collision signal results`}
+          description="MATLAB telemetry was parsed into a live chart set, showing the uploaded signal stack and energy summary directly in the collision physics workspace."
+          action={
+            <Badge tone="blue" className="font-mono text-xs px-2.5 py-1">
+              {importedDataset.rows.length.toLocaleString()} rows
+            </Badge>
+          }
+        />
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <DatasetEnergyDonut dataset={importedDataset} />
+          <DatasetHistogram dataset={importedDataset} column={importedDataset.xColumn || importedDataset.numericColumns[0]} />
+        </div>
+
+        <DatasetCharts dataset={importedDataset} selected={visible} xColumn={importedDataset.xColumn} />
+      </div>
+    );
+  }
   const [activePreset, setActivePreset] = useState("Standard Oblique Collision");
 
   // Run the physics simulation client-side

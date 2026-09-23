@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import { useTheme } from "../../hooks/useTheme";
 
 export const PALETTE = {
-  blue: "#4d8dfc",     // richer broadcast-grade blue for velocity & approach
-  violet: "#8f7cf6",   // refined violet for system momentum & total energy
-  emerald: "#3ec9a4",  // richer green for nominal state
-  amber: "#f7a35c",    // warm amber for kinetic energy & impact loads
-  rose: "#ff6b5c",     // softened collision red
-  cyan: "#57d4ff",     // bright cyan for spin dynamics
+  blue: "#2e9ef5",     // electric telemetry blue
+  violet: "#8b7cf6",   // collision-system violet
+  emerald: "#2bc4a1",  // stable green for nominal runs
+  amber: "#ffae5c",    // impact / energy amber
+  rose: "#ff6b5c",     // collision-impact red
+  cyan: "#63d9ff",     // telemetry cyan
   slate: "#64748b",
   pink: "#ff7aca",
   lime: "#9adf56",
